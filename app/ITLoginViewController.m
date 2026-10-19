@@ -3,6 +3,7 @@
 #import "ITUtil.h"
 #import "ITSession.h"
 #import "ITApi.h"
+#import "ITNotifications.h"
 
 @interface ITLoginViewController () <UIWebViewDelegate>
 @end
@@ -98,6 +99,7 @@
                 [ITSession compartida].usuario = @{ @"login" : c.login ?: @"",
                                                     @"id" : c.identificador ?: @"" };
             }
+            [[ITNotifications compartida] comenzar];
             [debil dismissViewControllerAnimated:YES completion:nil];
         } else {
             [[ITSession compartida] cerrarSesion];

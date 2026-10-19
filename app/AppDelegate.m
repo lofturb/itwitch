@@ -5,6 +5,7 @@
 #import "ITSearchViewController.h"
 #import "ITFollowingViewController.h"
 #import "ITProfileViewController.h"
+#import "ITNotifications.h"
 
 @implementation AppDelegate {
     UITabBarController *_tabs;
@@ -25,7 +26,27 @@
     self.window.rootViewController = _tabs;
     self.window.tintColor = [ITTheme acento];
     [self.window makeKeyAndVisible];
+
+    [[UIApplication sharedApplication] setApplicationIconBadgeNumber:0];
+    [[ITNotifications compartida] comenzar];
     return YES;
+}
+
+- (void)applicationDidBecomeActive:(UIApplication *)application {
+    [[UIApplication sharedApplication] setApplicationIconBadgeNumber:0];
+    [[ITNotifications compartida] comenzar];
+}
+
+- (void)application:(UIApplication *)application
+        didRegisterUserNotificationSettings:(UIUserNotificationSettings *)notificationSettings {
+    [[ITNotifications compartida] permisoCambiado:notificationSettings];
+}
+
+- (void)application:(UIApplication *)application
+        didReceiveLocalNotification:(UILocalNotification *)notification {
+    application.applicationIconBadgeNumber = 0;
+    [[ITNotifications compartida] limpiarNuevos];
+    if (_tabs) _tabs.selectedIndex = 3;
 }
 
 - (void)montarTabs {

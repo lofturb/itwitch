@@ -71,6 +71,31 @@ static ITMiniPlayer *gMini = nil;
     [self cargarClip];
 }
 
+- (void)adoptarPlayer:(AVPlayer *)player
+               stream:(ITStream *)stream
+                video:(ITVideo *)video
+                 clip:(ITClip *)clip
+             posicion:(double)posicion {
+    if (!player) return;
+    NSString *titulo = stream.nombre ?: stream.login;
+    if (video) titulo = video.titulo ?: @"Vídeo";
+    if (clip) titulo = clip.titulo ?: @"Clip";
+    [self prepararCajaConTitulo:titulo ?: @"iTwitch"];
+
+    if (_player && _player != player) [_player pause];
+    [self quitarObservador];
+    _stream = stream;
+    _video = video;
+    _clip = clip;
+    _posicion = posicion;
+    _player = player;
+    _item = player.currentItem;
+    _capa.player = player;
+    _rueda.hidden = YES;
+    [_rueda stopAnimating];
+    [_player play];
+}
+
 - (void)cerrar {
     [self parar];
     [_caja removeFromSuperview];

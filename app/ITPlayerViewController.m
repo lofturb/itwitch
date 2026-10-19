@@ -26,6 +26,7 @@
     BOOL _bucle;
     BOOL _iniciado;
     BOOL _reanudado;
+    BOOL _cedidoAMini;
     NSTimeInterval _ultimoGuardado;
 
     UIView *_vistaVideo;
@@ -44,6 +45,7 @@
     UIButton *_btnAtras10;
     UIButton *_btnAdelante10;
     UIButton *_btnCompartir;
+    UIButton *_btnMas;
     UIButton *_btnCalidad;
     UIButton *_btnVelocidad;
     UIButton *_btnChat;
@@ -66,6 +68,7 @@
     double _duracion;
     double _tiempoAntesDeArrastrar;
     MPVolumeView *_volumen;
+    MPVolumeView *_ruta;
 
     ITChatViewController *_chat;
     UIView *_cajaChat;
@@ -169,16 +172,19 @@
 
 - (void)minimizarSiProcede {
     if (!_iniciado || _player.rate <= 0) return;
+    ITMiniPlayer *mini = [ITMiniPlayer compartida];
     if (_stream) {
-        [[ITMiniPlayer compartida] mostrarStream:_stream];
+        [mini adoptarPlayer:_player stream:_stream video:nil clip:nil posicion:0];
     } else if (_video) {
         double posicion = CMTimeGetSeconds(_player.currentTime);
-        if (isfinite(posicion) && posicion > 0) {
-            [[ITMiniPlayer compartida] mostrarVideo:_video posicion:posicion];
-        }
+        [mini adoptarPlayer:_player stream:nil video:_video clip:nil
+                   posicion:(isfinite(posicion) ? posicion : 0)];
     } else if (_clip) {
-        [[ITMiniPlayer compartida] mostrarClip:_clip];
+        [mini adoptarPlayer:_player stream:nil video:nil clip:_clip posicion:0];
+    } else {
+        return;
     }
+    _cedidoAMini = YES;
 }
 
 - (void)viewDidLayoutSubviews {
@@ -196,8 +202,10 @@
     _barraInferior.frame = CGRectMake(0, altoVideo - 78, ancho, 78);
 
     _btnAtras.frame = CGRectMake(2, 2, 40, 40);
-    _lblTitulo.frame = CGRectMake(46, 2, ancho - 100, 40);
-    _btnCompartir.frame = CGRectMake(ancho - 42, 2, 40, 40);
+    _lblTitulo.frame = CGRectMake(46, 2, ancho - 178, 40);
+    _ruta.frame = CGRectMake(ancho - 128, 2, 40, 40);
+    _btnMas.frame = CGRectMake(ancho - 88, 2, 40, 40);
+    _btnCompartir.frame = CGRectMake(ancho - 46, 2, 40, 40);
 
     _btnPlay.frame = CGRectMake((ancho - 56) / 2, (altoVideo - 56) / 2, 56, 56);
     _btnAtras10.frame = CGRectMake((ancho - 56) / 2 - 76, (altoVideo - 42) / 2, 50, 42);
@@ -345,10 +353,11 @@
         [_player removeTimeObserver:_observadorTiempo];
         _observadorTiempo = nil;
     }
-    __typeof(self) debil = self;
+    __weak typeof(self) debil = self;
     _observadorTiempo = [_player addPeriodicTimeObserverForInterval:CMTimeMakeWithSeconds(0.5, 600)
         queue:dispatch_get_main_queue() usingBlock:^(CMTime tiempo) {
-        [debil actualizarTiempo:tiempo];
+        __typeof(self) fuerte = debil;
+        if (fuerte) [fuerte actualizarTiempo:tiempo];
     }];
 }
 
@@ -548,6 +557,19 @@
     [_btnCompartir addTarget:self action:@selector(compartir) forControlEvents:UIControlEventTouchUpInside];
     [_barraSuperior addSubview:_btnCompartir];
 
+    _btnMas = [UIButton buttonWithType:UIButtonTypeSystem];
+    [_btnMas setTitle:@"⋯" forState:UIControlStateNormal];
+    [_btnMas setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    _btnMas.titleLabel.font = [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
+    [_btnMas addTarget:self action:@selector(mostrarMas) forControlEvents:UIControlEventTouchUpInside];
+    [_barraSuperior addSubview:_btnMas];
+
+    _ruta = [[MPVolumeView alloc] init];
+    _ruta.showsVolumeSlider = NO;
+    _ruta.showsRouteButton = YES;
+    _ruta.tintColor = [UIColor whiteColor];
+    [_barraSuperior addSubview:_ruta];
+
     _btnPlay = [UIButton buttonWithType:UIButtonTypeSystem];
     _btnPlay.tintColor = [UIColor whiteColor];
     [_btnPlay setImage:[ITTheme icono:@"reproducir" lado:34] forState:UIControlStateNormal];
@@ -684,6 +706,9 @@
     _pantallaCompleta = !_pantallaCompleta;
     [_btnPantalla setImage:[ITTheme icono:(_pantallaCompleta ? @"encoger" : @"pantalla") lado:18]
                   forState:UIControlStateNormal];
+    UIInterfaceOrientation orientacion = _pantallaCompleta
+        ? UIInterfaceOrientationLandscapeRight : UIInterfaceOrientationPortrait;
+    [[UIApplication sharedApplication] setStatusBarOrientation:orientacion animated:YES];
     [self setNeedsStatusBarAppearanceUpdate];
     [self.view setNeedsLayout];
     [UIViewController attemptRotationToDeviceOrientation];
@@ -694,10 +719,7 @@
 }
 
 - (void)compartir {
-    NSURL *url = nil;
-    if (_stream) url = [NSURL URLWithString:[NSString stringWithFormat:@"https://www.twitch.tv/%@", _stream.login]];
-    else if (_video) url = [NSURL URLWithString:[NSString stringWithFormat:@"https://www.twitch.tv/videos/%@", _video.identificador]];
-    else if (_clip) url = [NSURL URLWithString:[NSString stringWithFormat:@"https://clips.twitch.tv/%@", _clip.slug]];
+    NSURL *url = [self enlaceActual];
     if (!url) return;
     UIActivityViewController *a = [[UIActivityViewController alloc] initWithActivityItems:@[url]
                                                                   applicationActivities:nil];
@@ -707,6 +729,37 @@
                                                                 self.view.bounds.size.height / 2, 1, 1);
     }
     [self presentViewController:a animated:YES completion:nil];
+}
+
+- (NSURL *)enlaceActual {
+    if (_stream) return [NSURL URLWithString:[NSString stringWithFormat:@"https://www.twitch.tv/%@", _stream.login]];
+    if (_video) return [NSURL URLWithString:[NSString stringWithFormat:@"https://www.twitch.tv/videos/%@", _video.identificador]];
+    if (_clip) return [NSURL URLWithString:[NSString stringWithFormat:@"https://clips.twitch.tv/%@", _clip.slug]];
+    return nil;
+}
+
+- (void)mostrarMas {
+    UIAlertController *a = [UIAlertController alertControllerWithTitle:nil
+        message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    [a addAction:[UIAlertAction actionWithTitle:@"Compartir" style:UIAlertActionStyleDefault
+        handler:^(UIAlertAction *accion) { [self compartir]; }]];
+    [a addAction:[UIAlertAction actionWithTitle:@"Copiar enlace" style:UIAlertActionStyleDefault
+        handler:^(UIAlertAction *accion) {
+        NSURL *url = [self enlaceActual];
+        if (url) [UIPasteboard generalPasteboard].string = url.absoluteString;
+    }]];
+    [a addAction:[UIAlertAction actionWithTitle:@"Abrir en Twitch" style:UIAlertActionStyleDefault
+        handler:^(UIAlertAction *accion) {
+        NSURL *url = [self enlaceActual];
+        if (url) [[UIApplication sharedApplication] openURL:url];
+    }]];
+    [a addAction:[UIAlertAction actionWithTitle:@"Reportar un problema" style:UIAlertActionStyleDefault
+        handler:^(UIAlertAction *accion) {
+        NSURL *url = [NSURL URLWithString:@"https://github.com/lofturb/itwitch/issues"];
+        if (url) [[UIApplication sharedApplication] openURL:url];
+    }]];
+    [a addAction:[UIAlertAction actionWithTitle:@"Cancelar" style:UIAlertActionStyleCancel handler:nil]];
+    [self presentarAccion:a];
 }
 
 #pragma mark - Calidad y velocidad
@@ -922,10 +975,21 @@
 }
 
 - (void)parar {
-    [_player pause];
+    if (!_cedidoAMini) [_player pause];
     [_timerOcultar invalidate];
+    _timerOcultar = nil;
+    if (_observadorTiempo) {
+        [_player removeTimeObserver:_observadorTiempo];
+        _observadorTiempo = nil;
+    }
+    if (_item && _observadorEstado) {
+        [_item removeObserver:self forKeyPath:@"status"];
+        _observadorEstado = nil;
+    }
     [_chat detener];
-    [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo:nil];
+    if (!_cedidoAMini) {
+        [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo:nil];
+    }
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 

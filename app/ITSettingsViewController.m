@@ -5,6 +5,7 @@
 #import "ITApi.h"
 #import "ITLoginViewController.h"
 #import "ITDiagnosticsViewController.h"
+#import "ITNotifications.h"
 
 static NSString * const kITCalidad = @"itwitch_calidad";
 static NSString * const kITChat = @"itwitch_chat";
@@ -40,7 +41,7 @@ static NSString * const kITReanudar = @"itwitch_reanudar";
 
 #pragma mark - Tabla
 
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 5; }
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 6; }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     switch (section) {
@@ -48,6 +49,7 @@ static NSString * const kITReanudar = @"itwitch_reanudar";
         case 1: return 2;
         case 2: return 3;
         case 3: return 1;
+        case 4: return 1;
         default: return 1;
     }
 }
@@ -57,7 +59,8 @@ static NSString * const kITReanudar = @"itwitch_reanudar";
         case 0: return @"Cuenta";
         case 1: return @"Apariencia";
         case 2: return @"Reproductor";
-        case 3: return @"Ayuda";
+        case 3: return @"Avisos";
+        case 4: return @"Ayuda";
         default: return @"iTwitch";
     }
 }
@@ -116,6 +119,13 @@ static NSString * const kITReanudar = @"itwitch_reanudar";
             c.accessoryView = s;
         }
     } else if (indexPath.section == 3) {
+        c.textLabel.text = @"Avisos de directos";
+        UISwitch *s = [[UISwitch alloc] init];
+        s.onTintColor = [ITTheme acento];
+        s.on = [ITNotifications avisosActivos];
+        [s addTarget:self action:@selector(cambiarAvisos:) forControlEvents:UIControlEventValueChanged];
+        c.accessoryView = s;
+    } else if (indexPath.section == 4) {
         c.textLabel.text = @"Diagnóstico de conexión";
         c.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     } else {
@@ -152,7 +162,7 @@ static NSString * const kITReanudar = @"itwitch_reanudar";
         [self elegirCalidad];
         return;
     }
-    if (indexPath.section == 3) {
+    if (indexPath.section == 4) {
         ITDiagnosticsViewController *vc = [[ITDiagnosticsViewController alloc] init];
         [self.navigationController pushViewController:vc animated:YES];
     }
@@ -168,6 +178,10 @@ static NSString * const kITReanudar = @"itwitch_reanudar";
 - (void)cambiarReanudar:(UISwitch *)s {
     [[NSUserDefaults standardUserDefaults] setBool:s.on forKey:kITReanudar];
     [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
+- (void)cambiarAvisos:(UISwitch *)s {
+    [ITNotifications establecerAvisosActivos:s.on];
 }
 
 - (void)elegirFondo {
@@ -262,6 +276,7 @@ static NSString * const kITReanudar = @"itwitch_reanudar";
                                     @"id" : c.identificador ?: @"" };
             }
             [sesion guardarToken:limpio];
+            [[ITNotifications compartida] comenzar];
             [self.tableView reloadData];
             UIAlertController *ok = [UIAlertController alertControllerWithTitle:@"Sesión iniciada"
                 message:@"El token es válido." preferredStyle:UIAlertControllerStyleAlert];

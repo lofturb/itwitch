@@ -36,6 +36,7 @@ iTwitch_FILES = \
 	ITDiagnosticsViewController.m \
 	ITChatClient.m \
 	ITChatViewController.m \
+	ITNotifications.m \
 	ITMiniPlayer.m \
 	ITPlayerViewController.m
 

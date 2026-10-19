@@ -5,6 +5,9 @@
 #import "ITApi.h"
 #import "ITCategoryViewController.h"
 #import "ITPlayerViewController.h"
+#import "ITLoginViewController.h"
+#import "ITSession.h"
+#import "ITNotifications.h"
 
 @implementation ITHomeViewController {
     NSArray *_juegos;
@@ -52,6 +55,8 @@
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self.tableView reloadData];
+    NSUInteger nuevos = [[ITNotifications compartida] nuevos].count;
+    self.tabBarItem.badgeValue = nuevos ? [NSString stringWithFormat:@"%lu", (unsigned long)nuevos] : nil;
 }
 
 - (void)recargar {
@@ -83,10 +88,54 @@
 }
 
 - (void)abrirNotificaciones {
-    UIAlertController *a = [UIAlertController alertControllerWithTitle:@"Notificaciones"
-        message:@"Las notificaciones push necesitan un servidor. iTwitch avisará de los directos de tus canales seguidos cuando abras la app."
-        preferredStyle:UIAlertControllerStyleAlert];
-    [a addAction:[UIAlertAction actionWithTitle:@"Vale" style:UIAlertActionStyleDefault handler:nil]];
+    if (![[ITSession compartida] haySesion]) {
+        UIAlertController *a = [UIAlertController alertControllerWithTitle:@"Notificaciones"
+            message:@"Inicia sesión para ver los directos de tus canales seguidos."
+            preferredStyle:UIAlertControllerStyleAlert];
+        [a addAction:[UIAlertAction actionWithTitle:@"Entrar" style:UIAlertActionStyleDefault
+            handler:^(UIAlertAction *accion) {
+            ITLoginViewController *vc = [[ITLoginViewController alloc] init];
+            UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+            [self presentViewController:nav animated:YES completion:nil];
+        }]];
+        [a addAction:[UIAlertAction actionWithTitle:@"Cerrar" style:UIAlertActionStyleCancel handler:nil]];
+        [self presentViewController:a animated:YES completion:nil];
+        return;
+    }
+
+    NSArray *nuevos = [[ITNotifications compartida] nuevos];
+    UIAlertController *a;
+    if (nuevos.count == 0) {
+        a = [UIAlertController alertControllerWithTitle:@"Notificaciones"
+            message:[ITNotifications avisosActivos]
+                ? @"No hay nuevos directos de tus canales seguidos."
+                : @"Los avisos están desactivados. Actívalos en Ajustes para que iTwitch te avise de los nuevos directos."
+            preferredStyle:UIAlertControllerStyleAlert];
+    } else {
+        NSMutableString *texto = [NSMutableString stringWithString:
+                                  @"Estos canales seguidos se han puesto en directo:\n\n"];
+        NSUInteger limite = MIN(nuevos.count, (NSUInteger)8);
+        for (NSUInteger i = 0; i < limite; i++) {
+            ITChannel *c = nuevos[i];
+            [texto appendFormat:@"• %@", c.nombre.length ? c.nombre : c.login];
+            if (c.directoTitulo.length) [texto appendFormat:@" — %@", c.directoTitulo];
+            [texto appendString:@"\n"];
+        }
+        if (nuevos.count > limite) {
+            [texto appendFormat:@"\nY %lu más.", (unsigned long)(nuevos.count - limite)];
+        }
+        a = [UIAlertController alertControllerWithTitle:@"Nuevos directos"
+                                                message:texto
+                                         preferredStyle:UIAlertControllerStyleAlert];
+    }
+
+    [a addAction:[UIAlertAction actionWithTitle:@"Ver Siguiendo" style:UIAlertActionStyleDefault
+        handler:^(UIAlertAction *accion) {
+        [[ITNotifications compartida] limpiarNuevos];
+        self.tabBarItem.badgeValue = nil;
+        self.tabBarController.selectedIndex = 3;
+    }]];
+    [a addAction:[UIAlertAction actionWithTitle:@"Cerrar" style:UIAlertActionStyleCancel handler:nil]];
     [self presentViewController:a animated:YES completion:nil];
 }
 
