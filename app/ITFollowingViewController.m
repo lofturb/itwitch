@@ -12,6 +12,7 @@
     NSArray *_apagados;
     UIView *_vacio;
     BOOL _cargando;
+    NSTimer *_refresco;
 }
 
 - (instancetype)init {
@@ -41,6 +42,16 @@
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     [self recargar];
+    [_refresco invalidate];
+    _refresco = [NSTimer scheduledTimerWithTimeInterval:60.0 target:self
+                                               selector:@selector(recargar)
+                                               userInfo:nil repeats:YES];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    [_refresco invalidate];
+    _refresco = nil;
 }
 
 - (void)prepararVacio {

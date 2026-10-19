@@ -467,10 +467,46 @@
     if (!_esDirecto && !_esClip) {
         [[NSUserDefaults standardUserDefaults] removeObjectForKey:[self claveProgreso]];
         [[NSUserDefaults standardUserDefaults] synchronize];
+        if (_listaVideos.count > _indiceVideo + 1) {
+            [self cargarSiguienteVideo];
+            return;
+        }
     }
     [self actualizarBotonPlay];
     [self mostrarControles:YES];
     [_timerOcultar invalidate];
+}
+
+- (void)cargarSiguienteVideo {
+    ITVideo *siguiente = _listaVideos[_indiceVideo + 1];
+    if (!siguiente) return;
+
+    if (_chat) {
+        [_chat detener];
+        [_chat willMoveToParentViewController:nil];
+        [_chat.view removeFromSuperview];
+        [_chat removeFromParentViewController];
+        _chat = nil;
+    }
+    _chatCargado = NO;
+    _video = siguiente;
+    _indiceVideo++;
+    _reanudado = NO;
+    _posicionInicial = 0;
+    _urlMaster = nil;
+    _variantes = @[];
+    _varianteActual = nil;
+    _duracion = 0;
+    _slider.maximumValue = 1;
+    _slider.value = 0;
+    _lblTiempo.text = @"0:00";
+    _lblDuracion.text = @"0:00";
+    _lblTitulo.text = [self titulo];
+    _lblError.hidden = YES;
+    _btnReintentar.hidden = YES;
+    [self cargar];
+    if (_chatActivo) [self crearChat];
+    [self.view setNeedsLayout];
 }
 
 - (void)falloDeVideo:(NSNotification *)n {
@@ -715,7 +751,14 @@
 }
 
 - (void)cerrar {
-    [self.navigationController popViewControllerAnimated:YES];
+    UINavigationController *nav = self.navigationController;
+    if (nav && nav.viewControllers.count > 1) {
+        [nav popViewControllerAnimated:YES];
+    } else if (nav.presentingViewController) {
+        [nav dismissViewControllerAnimated:YES completion:nil];
+    } else {
+        [self dismissViewControllerAnimated:YES completion:nil];
+    }
 }
 
 - (void)compartir {
@@ -1015,7 +1058,7 @@
 - (void)reanudarSiProcede {
     if (_esDirecto || _esClip || _reanudado) return;
     _reanudado = YES;
-    if (![ITSettingsViewController reanudarVod]) return;
+    if (![ITSettingsViewController reanudarVod] && _posicionInicial <= 0) return;
     NSString *clave = [self claveProgreso];
     if (!clave) return;
     double guardado = _posicionInicial > 0 ? _posicionInicial :

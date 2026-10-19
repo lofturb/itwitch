@@ -29,6 +29,9 @@ jobs:
       - name: Descargar el codigo
         uses: actions/checkout@v4
 
+      - name: Comprobar fuentes y metadatos
+        run: python3 tools/comprobar_fuentes.py
+
       - name: Dependencias del sistema
         run: |
           sudo apt-get update

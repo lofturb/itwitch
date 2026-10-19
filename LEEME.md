@@ -1,44 +1,30 @@
 # iTwitch — por dónde empezar
 
-Esta carpeta todavía está vacía: aquí va el cliente de **Twitch** para
-**iOS 9.3.5 de 32 bits (armv7)**, en la misma línea que Tube9.
+iTwitch es un cliente **no oficial** de Twitch para **iOS 9.3.5 de 32 bits
+(armv7)**, escrito en Objective-C con Theos y compilado en GitHub Actions sin
+Mac ni Xcode.
 
-Al lado está **`PROCESO.md`**: la guía de cómo se compila un `.ipa` para iOS 9
-**sin Mac** (Theos + GitHub Actions, el SDK, la trampa de `liblaunch.tbd`, cómo
-publicarlo en Releases y cómo instalarlo). Es una **copia literal** de la guía
-del proyecto Tube9, que vive en `..\ipa\`, porque ese camino es el mismo:
-**toda la parte de compilar y empaquetar vale tal cual**; lo que cambia es la
-capa de servicio (Twitch en vez de YouTube).
+La guía de uso, instalación, certificados, inicio de sesión y límites está en
+**`README.md`**. La guía detallada de compilación sin Mac (Theos, SDK 9.3,
+`liblaunch.tbd`, empaquetado, Releases e instalación) está en **`PROCESO.md`**.
 
-## Se reutiliza sin tocar
+## Resumen rápido
 
-* El *workflow* de GitHub Actions y el `Makefile` (sección **7** de la guía).
-* `..\ipa\tools\generar_recursos.py` (iconos e imágenes de arranque),
-  `..\ipa\tools\verificar_ipa.py` (comprobar el `.ipa` sin Mac) y
-  `..\ipa\certificados\CertificadosModernos.mobileconfig`, que **cualquier** app
-  de iOS 9 necesita hoy para poder hablar por HTTPS.
-* La sección **8** de la guía (errores que ya han pasado y su arreglo) y la
-  **10** (chuleta de comandos).
+1. Instala el perfil `certificados/CertificadosModernos.mobileconfig` en el
+   dispositivo (ver README; sirve un servidor HTTP local para evitar el problema
+   de confianza de iOS 9 con GitHub).
+2. Instala el `.ipa` del último Release con Filza/iFile y AppSync Unified.
+3. Abre la app. Para seguir canales, chat con cuenta y avisos, inicia sesión
+   desde Perfil o pega el token `auth-token` en Ajustes.
 
-## Hay que hacerlo nuevo
+## Compilar
 
-* **La capa de datos**: la API de Twitch (Helix con token de aplicación, o su
-  GraphQL público). Nada de lo de YouTube sirve aquí.
-* **El directo**: Twitch sirve **HLS con H.264**, y `AVPlayer` de iOS 9 ya
-  reproduce HLS. El techo de 360p que cuenta la guía es un problema de YouTube
-  (VP9/AV1), no de Twitch: aquí **no debería aplicarse**.
-* **La sesión**: el OAuth de Twitch necesita un navegador que comparta cookies
-  (`UIWebView`, ver `..\ipa\app\YTLoginViewController.m`) o el flujo de código
-  de dispositivo.
+Push a `main` o **Actions → Construir IPA → Run workflow**. El workflow ejecuta
+`tools/comprobar_fuentes.py`, compila con Theos y publica el `.ipa` como
+artefacto y Release.
 
-## Primer paso recomendado
+## Verificar
 
-Abrir una sesión nueva en esta carpeta y pedir, tal cual: *«lee `PROCESO.md` y
-`..\ipa\README.md`, y móntame el esqueleto de la app (Theos, CI y un `.ipa`
-instalable)»*. Así el punto de partida queda resuelto **antes** de escribir una
-línea de Twitch.
-
----
-
-> Nota: este fichero es sólo un recordatorio para quien empiece aquí; se puede
-> borrar sin miedo. La guía de verdad es `PROCESO.md`.
+```sh
+python tools/verificar_ipa.py dist/iTwitch-1.0.0.ipa
+```

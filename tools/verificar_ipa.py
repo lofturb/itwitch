@@ -2,7 +2,7 @@
 """Verifica un .ipa: arquitectura, version minima de iOS, Info.plist y recursos.
 
 Uso:
-    python tools/verificar_ipa.py entrega/Tube9.ipa
+    python tools/verificar_ipa.py dist/iTwitch-1.0.0.ipa
 
 Lee la cabecera Mach-O del ejecutable, asi que no hace falta ni un Mac ni
 otool: sirve para comprobar que el paquete es de verdad armv7 y para iOS 9.
@@ -195,6 +195,8 @@ def main():
             problemas.append("la version minima es %s" % ", ".join(minimos))
         if not cab["firmado"]:
             problemas.append("no lleva firma (necesita AppSync Unified al instalar)")
+        if info and info.get("CFBundleIdentifier") != "com.lofturb.itwitch":
+            problemas.append("el bundle ID es %r" % info.get("CFBundleIdentifier"))
 
         if problemas:
             print("  ATENCION: %s" % "; ".join(problemas))

@@ -188,6 +188,13 @@ static NSString * const kITRecientes = @"itwitch_busquedas_recientes";
     return @"Sugerencias";
 }
 
+- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
+    if (_modoResultados) {
+        return @"La API pública de Twitch solo permite buscar canales y categorías. Los vídeos y clips se buscan dentro de cada canal.";
+    }
+    return nil;
+}
+
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
     if (_modoResultados) return 44.0;
     return 32.0;

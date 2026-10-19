@@ -62,12 +62,16 @@
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     ITPlayerViewController *p = [[ITPlayerViewController alloc] initWithVideo:_coleccion.videos[indexPath.row]];
+    p.listaVideos = _coleccion.videos;
+    p.indiceVideo = indexPath.row;
     [self.navigationController pushViewController:p animated:YES];
 }
 
 - (void)reproducirTodo {
     if (_coleccion.videos.count == 0) return;
     ITPlayerViewController *p = [[ITPlayerViewController alloc] initWithVideo:_coleccion.videos.firstObject];
+    p.listaVideos = _coleccion.videos;
+    p.indiceVideo = 0;
     [self.navigationController pushViewController:p animated:YES];
 }
 
