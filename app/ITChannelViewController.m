@@ -184,7 +184,7 @@
 #pragma mark - Carga
 
 - (void)cargarCanal {
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
     [[ITApi compartida] canal:_login completion:^(id objeto, NSError *error) {
         if ([objeto isKindOfClass:[ITChannel class]]) {
             debil->_canal = objeto;
@@ -228,7 +228,7 @@
     if (!_canal) return;
     _generacion++;
     NSUInteger gen = _generacion;
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
 
     if (_pestana == 1) {
         _cargando = YES;

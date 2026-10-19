@@ -208,10 +208,10 @@
     _lblDirecto.frame = CGRectMake(14, altoVideo - 32, 100, 16);
     _btnIrDirecto.frame = CGRectMake(ancho - 110, altoVideo - 34, 96, 20);
 
-    _btnCalidad.frame = CGRectMake(80, altoVideo - 24, 58, 20);
-    _btnVelocidad.frame = CGRectMake(140, altoVideo - 24, 48, 20);
-    _btnBucle.frame = CGRectMake(190, altoVideo - 24, 34, 20);
-    _btnChat.frame = CGRectMake(ancho - 150, altoVideo - 24, 34, 20);
+    _btnCalidad.frame = CGRectMake(76, altoVideo - 24, 46, 20);
+    _btnVelocidad.frame = CGRectMake(124, altoVideo - 24, 36, 20);
+    _btnBucle.frame = CGRectMake(162, altoVideo - 24, 30, 20);
+    _btnChat.frame = CGRectMake(ancho - 96, altoVideo - 24, 30, 20);
     _btnPantalla.frame = CGRectMake(ancho - 42, altoVideo - 24, 34, 20);
 
     _rueda.center = CGPointMake(ancho / 2, altoVideo / 2);
@@ -241,7 +241,7 @@
     _lblError.hidden = YES;
     _btnReintentar.hidden = YES;
 
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
     if (_esClip) {
         [self cargarClip];
         return;
@@ -278,7 +278,7 @@
 }
 
 - (void)cargarVariantesYReproducir:(NSString *)url {
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
     [ITPlayback variantesDeMaster:url completion:^(NSArray *variantes, NSError *error) {
         debil->_variantes = variantes ?: @[];
         NSDictionary *elegida = [debil mejorCalidadDe:debil->_variantes];
@@ -344,7 +344,7 @@
         [_player removeTimeObserver:_observadorTiempo];
         _observadorTiempo = nil;
     }
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
     _observadorTiempo = [_player addPeriodicTimeObserverForInterval:CMTimeMakeWithSeconds(0.5, 600)
         queue:dispatch_get_main_queue() usingBlock:^(CMTime tiempo) {
         [debil actualizarTiempo:tiempo];
@@ -352,8 +352,12 @@
 }
 
 - (void)mostrarCargando:(BOOL)cargando {
-    if (cargando) [_rueda startAnimating];
-    else [_rueda stopAnimating];
+    if (cargando) {
+        [_vistaVideo bringSubviewToFront:_rueda];
+        [_rueda startAnimating];
+    } else {
+        [_rueda stopAnimating];
+    }
 }
 
 - (void)mostrarError:(NSString *)texto {
@@ -361,6 +365,8 @@
     _lblError.text = texto ?: @"Error de reproducción.";
     _lblError.hidden = NO;
     _btnReintentar.hidden = NO;
+    [_vistaVideo bringSubviewToFront:_lblError];
+    [_vistaVideo bringSubviewToFront:_btnReintentar];
     [_player pause];
 }
 
@@ -368,6 +374,14 @@
     _lblError.hidden = YES;
     _btnReintentar.hidden = YES;
     [_player pause];
+    if (_observadorTiempo) {
+        [_player removeTimeObserver:_observadorTiempo];
+        _observadorTiempo = nil;
+    }
+    if (_item && _observadorEstado) {
+        [_item removeObserver:self forKeyPath:@"status"];
+        _observadorEstado = nil;
+    }
     _player = nil;
     _capa.player = nil;
     _item = nil;
@@ -606,6 +620,8 @@
         _lblDuracion.hidden = YES;
         _btnVelocidad.hidden = YES;
         _btnBucle.hidden = YES;
+        _btnAtras10.hidden = YES;
+        _btnAdelante10.hidden = YES;
         _lblDirecto.hidden = NO;
         _btnIrDirecto.hidden = NO;
     } else {
@@ -628,6 +644,7 @@
 - (void)mostrarControles:(BOOL)mostrar {
     _controlesVisibles = mostrar;
     _ultimoToque = [NSDate timeIntervalSinceReferenceDate];
+    _controles.userInteractionEnabled = mostrar;
     [UIView animateWithDuration:0.18 animations:^{
         _controles.alpha = mostrar ? 1.0 : 0.0;
     }];
@@ -638,7 +655,7 @@
 - (void)programarOcultar {
     [_timerOcultar invalidate];
     if (_player.rate == 0) return;
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
     _timerOcultar = [NSTimer scheduledTimerWithTimeInterval:3.6 target:debil
                                                    selector:@selector(ocultarPorTimer)
                                                    userInfo:nil repeats:NO];

@@ -44,7 +44,7 @@
 - (void)recargar {
     if (_cargando) return;
     _cargando = YES;
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
     [[ITApi compartida] directosDelJuego:_juego.mostrado ?: _juego.nombre
                               completion:^(NSArray *elementos, NSError *error) {
         debil->_cargando = NO;

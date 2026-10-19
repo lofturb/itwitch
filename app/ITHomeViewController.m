@@ -59,7 +59,7 @@
     _cargando = YES;
     _vacio.text = @"Cargando Twitch…";
 
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
     [[ITApi compartida] categorias:18 completion:^(NSArray *elementos, NSError *error) {
         if (elementos) debil->_juegos = elementos;
         [debil terminarCarga];

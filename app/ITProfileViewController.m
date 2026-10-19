@@ -86,7 +86,7 @@
         [self pintar];
         return;
     }
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
     [[ITApi compartida] usuarioActual:^(id objeto, NSError *error) {
         if ([objeto isKindOfClass:[ITChannel class]]) debil->_usuario = objeto;
         [debil pintar];

@@ -60,7 +60,7 @@
 }
 
 - (void)ejecutar {
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
 
     [[ITApi compartida] directos:1 completion:^(NSArray *elementos, NSError *error) {
         if (error) {

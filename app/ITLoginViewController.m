@@ -88,7 +88,7 @@
 - (void)validar:(NSString *)token {
     if (_validando) return;
     _validando = YES;
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
     [[ITSession compartida] guardarToken:token];
     [[ITApi compartida] usuarioActual:^(id objeto, NSError *error) {
         debil->_validando = NO;

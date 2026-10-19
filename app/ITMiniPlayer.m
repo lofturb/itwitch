@@ -79,7 +79,7 @@ static ITMiniPlayer *gMini = nil;
 #pragma mark - Carga
 
 - (void)cargarStream {
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
     [ITPlayback urlDirecto:_stream.login completion:^(NSString *url, NSError *error) {
         if (error || url.length == 0) { [debil fallo]; return; }
         [ITPlayback variantesDeMaster:url completion:^(NSArray *variantes, NSError *error2) {
@@ -92,7 +92,7 @@ static ITMiniPlayer *gMini = nil;
 }
 
 - (void)cargarVideo {
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
     [ITPlayback urlVod:_video.identificador completion:^(NSString *url, NSError *error) {
         if (error || url.length == 0) { [debil fallo]; return; }
         [ITPlayback variantesDeMaster:url completion:^(NSArray *variantes, NSError *error2) {

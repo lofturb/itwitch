@@ -226,7 +226,7 @@
 #pragma mark - Replay
 
 - (void)cargarReplay {
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
     [[ITApi compartida] comentariosVod:_videoID completion:^(NSArray *elementos, NSError *error) {
         if (error) {
             debil->_aviso.text = error.localizedDescription ?: @"No se pudo cargar el chat.";

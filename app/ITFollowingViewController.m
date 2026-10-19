@@ -89,7 +89,7 @@
     _cargando = YES;
     self.tableView.tableHeaderView = nil;
 
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
     [[ITApi compartida] seguidos:^(NSArray *elementos, NSError *error) {
         debil->_cargando = NO;
         [debil.refreshControl endRefreshing];

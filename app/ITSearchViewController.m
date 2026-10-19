@@ -95,7 +95,7 @@ static NSString * const kITRecientes = @"itwitch_busquedas_recientes";
 - (void)pedirSugerencias {
     NSString *texto = _buscador.text;
     if (texto.length < 2) return;
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
     [[ITApi compartida] sugerencias:texto completion:^(NSArray *elementos, NSError *error) {
         if (![debil->_buscador.text isEqualToString:texto]) return;
         if (elementos) debil->_sugerencias = elementos;
@@ -124,7 +124,7 @@ static NSString * const kITRecientes = @"itwitch_busquedas_recientes";
     [[NSUserDefaults standardUserDefaults] setObject:rec forKey:kITRecientes];
     [self.tableView reloadData];
 
-    __weak typeof(self) debil = self;
+    __typeof(self) debil = self;
     [[ITApi compartida] buscarCanales:texto completion:^(NSArray *elementos, NSError *error) {
         if (![debil->_ultimaConsulta isEqualToString:texto]) return;
         if (elementos) debil->_canales = elementos;
