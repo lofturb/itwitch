@@ -265,7 +265,7 @@
     NSString *nombre = tags[@"display-name"];
     if (nombre.length == 0) nombre = _nick;
     BOOL accion = NO;
-    if ([texto hasPrefix:@"\u0001ACTION "] && [texto hasSuffix:@"\u0001"]) {
+    if ([texto hasPrefix:@"\x01ACTION "] && [texto hasSuffix:@"\x01"]) {
         texto = [texto substringWithRange:NSMakeRange(8, texto.length - 9)];
         accion = YES;
     }
