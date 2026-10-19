@@ -5,6 +5,7 @@
 #import "ITChatClient.h"
 #import "ITApi.h"
 #import "ITSession.h"
+#import <math.h>
 
 #pragma mark - Celda de chat
 

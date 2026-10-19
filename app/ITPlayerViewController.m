@@ -27,6 +27,7 @@
     BOOL _iniciado;
     BOOL _reanudado;
     BOOL _cedidoAMini;
+    BOOL _reproducirAlCargar;
     NSTimeInterval _ultimoGuardado;
 
     UIView *_vistaVideo;
@@ -145,6 +146,7 @@
 
     _chatActivo = [ITSettingsViewController chatActivo] && !_esClip;
     if (_chatActivo) [self crearChat];
+    _reproducirAlCargar = YES;
     [self cargar];
 }
 
@@ -399,6 +401,7 @@
     _player = nil;
     _capa.player = nil;
     _item = nil;
+    _reproducirAlCargar = YES;
     [self cargar];
 }
 
@@ -420,7 +423,8 @@
         }
         [self actualizarBotonPlay];
         [self reanudarSiProcede];
-        [self reproducir];
+        if (_reproducirAlCargar) [self reproducir];
+        else [self actualizarBotonPlay];
         [self actualizarAhoraSuena];
     } else if (_item.status == AVPlayerItemStatusFailed) {
         [self mostrarError:_item.error.localizedDescription ?: @"No se pudo reproducir."];
@@ -500,6 +504,7 @@
     _urlMaster = nil;
     _variantes = @[];
     _varianteActual = nil;
+    _reproducirAlCargar = YES;
     _duracion = 0;
     _slider.maximumValue = 1;
     _slider.value = 0;
@@ -840,11 +845,11 @@
     [_btnCalidad setTitle:variante[@"nombre"] ?: @"Auto" forState:UIControlStateNormal];
     double actual = CMTimeGetSeconds(_player.currentTime);
     BOOL estaba = _player.rate > 0;
+    _reproducirAlCargar = estaba;
     [self prepararURL:url];
     if (!_esDirecto && actual > 1) {
         [_player seekToTime:CMTimeMakeWithSeconds(actual, 600)];
     }
-    if (estaba) [_player play];
 }
 
 - (void)elegirVelocidad {
