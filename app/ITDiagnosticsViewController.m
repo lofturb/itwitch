@@ -121,6 +121,11 @@
     }
     UIActivityViewController *a = [[UIActivityViewController alloc] initWithActivityItems:@[texto]
                                                                   applicationActivities:nil];
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+        a.popoverPresentationController.sourceView = self.view;
+        a.popoverPresentationController.sourceRect = CGRectMake(self.view.bounds.size.width / 2,
+                                                                self.view.bounds.size.height / 2, 1, 1);
+    }
     [self presentViewController:a animated:YES completion:nil];
 }
 

@@ -332,6 +332,11 @@
     NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"https://www.twitch.tv/%@", _login]];
     UIActivityViewController *a = [[UIActivityViewController alloc] initWithActivityItems:@[url]
                                                                   applicationActivities:nil];
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+        a.popoverPresentationController.sourceView = self.view;
+        a.popoverPresentationController.sourceRect = CGRectMake(self.view.bounds.size.width / 2,
+                                                                self.view.bounds.size.height / 2, 1, 1);
+    }
     [self presentViewController:a animated:YES completion:nil];
 }
 
@@ -342,7 +347,7 @@
         return 1 + (_videosDestacados.count > 0) + (_videosRecientes.count > 0) +
                (_clips.count > 0) + (_colecciones.count > 0);
     }
-    if (_pestana == 4) return 3 + (_canal.sociales.count > 0) + (_canal.segmentos.count > 0) + (_canal.paneles.count > 0);
+    if (_pestana == 4) return 5;
     return 1;
 }
 
@@ -383,9 +388,9 @@
     if (_pestana == 4) {
         if (section == 0) return @"Acerca de";
         if (section == 1) return @"Información";
-        if (section == 2) return @"Paneles";
-        if (section == 3) return @"Redes sociales";
-        if (section == 4) return @"Horario";
+        if (section == 2) return _canal.paneles.count ? @"Paneles" : nil;
+        if (section == 3) return _canal.sociales.count ? @"Redes sociales" : nil;
+        if (section == 4) return _canal.segmentos.count ? @"Horario" : nil;
     }
     return nil;
 }

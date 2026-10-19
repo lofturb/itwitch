@@ -479,7 +479,7 @@
     }
     _lblTiempo.text = ITDuracion(segundos);
 
-    if (!_esDirecto && !_esClip && [[ITSettingsViewController reanudarVod]]) {
+    if (!_esDirecto && !_esClip && [ITSettingsViewController reanudarVod]) {
         NSTimeInterval ahora = [NSDate timeIntervalSinceReferenceDate];
         if (ahora - _ultimoGuardado > 5.0) {
             _ultimoGuardado = ahora;
@@ -951,7 +951,7 @@
 - (void)reanudarSiProcede {
     if (_esDirecto || _esClip || _reanudado) return;
     _reanudado = YES;
-    if (![[ITSettingsViewController reanudarVod]]) return;
+    if (![ITSettingsViewController reanudarVod]) return;
     NSString *clave = [self claveProgreso];
     if (!clave) return;
     double guardado = _posicionInicial > 0 ? _posicionInicial :
