@@ -1,5 +1,6 @@
 #import "ITMiniPlayer.h"
 #import <AVFoundation/AVFoundation.h>
+#import <math.h>
 #import "ITTheme.h"
 #import "ITUtil.h"
 #import "ITPlayback.h"

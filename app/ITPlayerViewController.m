@@ -1,6 +1,7 @@
 #import "ITPlayerViewController.h"
 #import <AVFoundation/AVFoundation.h>
 #import <MediaPlayer/MediaPlayer.h>
+#import <math.h>
 #import "ITTheme.h"
 #import "ITUtil.h"
 #import "ITPlayback.h"
