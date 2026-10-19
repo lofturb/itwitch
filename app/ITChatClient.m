@@ -277,6 +277,32 @@
     m.texto = texto;
     m.logins = tags[@"badges"] ?: @"";
     m.esAccion = accion;
+
+    NSMutableArray *emotes = [NSMutableArray array];
+    for (NSString *bloque in [(tags[@"emotes"] ?: @"") componentsSeparatedByString:@"/"]) {
+        NSRange dosPuntos = [bloque rangeOfString:@":"];
+        if (dosPuntos.location == NSNotFound) continue;
+        NSString *identificador = [bloque substringToIndex:dosPuntos.location];
+        NSString *rangos = [bloque substringFromIndex:dosPuntos.location + 1];
+        for (NSString *rango in [rangos componentsSeparatedByString:@","]) {
+            NSRange guion = [rango rangeOfString:@"-"];
+            if (guion.location == NSNotFound) continue;
+            NSInteger inicio = [[rango substringToIndex:guion.location] integerValue];
+            NSInteger fin = [[rango substringFromIndex:guion.location + 1] integerValue];
+            if (identificador.length == 0 || inicio < 0 || fin < inicio ||
+                (NSUInteger)fin >= texto.length) continue;
+            [emotes addObject:@{ @"id" : identificador,
+                                 @"inicio" : @(inicio),
+                                 @"fin" : @(fin) }];
+        }
+    }
+    if (emotes.count > 1) {
+        [emotes sortUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
+            return [a[@"inicio"] compare:b[@"inicio"]];
+        }];
+    }
+    m.emotes = emotes;
+
     if ([tags[@"mod"] isEqualToString:@"1"]) m.logins = [m.logins stringByAppendingString:@",mod"];
     if ([tags[@"subscriber"] isEqualToString:@"1"]) m.logins = [m.logins stringByAppendingString:@",subscriber"];
     (void)destino;

@@ -24,6 +24,56 @@ static void ITEnMain(dispatch_block_t bloque) {
     else dispatch_async(dispatch_get_main_queue(), bloque);
 }
 
+// Un comentario de VOD: texto con emotes y desplazamiento dentro del video.
+static ITChatMessage *ITMensajeReplay(NSDictionary *nodo) {
+    NSDictionary *mensaje = ITDic(nodo[@"message"]);
+    NSMutableString *texto = [NSMutableString string];
+    NSMutableArray *emotes = [NSMutableArray array];
+    for (id f in ITArr(mensaje[@"fragments"])) {
+        NSDictionary *fragmento = ITDic(f);
+        NSString *t = ITStr(fragmento[@"text"]);
+        if (!t) continue;
+        [texto appendString:t];
+
+        // El id del emote en VOD llega como "id;inicio;fin".
+        NSString *emoteID = ITStr(ITDic(fragmento[@"emote"])[@"id"]);
+        NSArray *partes = [emoteID componentsSeparatedByString:@";"];
+        if (partes.count >= 3) {
+            NSInteger inicio = [partes[1] integerValue];
+            NSInteger fin = [partes[2] integerValue];
+            if (inicio >= 0 && fin >= inicio && (NSUInteger)fin < texto.length) {
+                [emotes addObject:@{ @"id" : partes[0],
+                                     @"inicio" : @(inicio),
+                                     @"fin" : @(fin) }];
+            }
+        }
+    }
+    if (texto.length == 0) return nil;
+    if (emotes.count > 1) {
+        [emotes sortUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
+            return [a[@"inicio"] compare:b[@"inicio"]];
+        }];
+    }
+    ITChatMessage *m = [[ITChatMessage alloc] init];
+    m.identificador = ITStr(nodo[@"id"]) ?: @"";
+    m.offset = ITNum(nodo[@"contentOffsetSeconds"]);
+    m.nombre = ITStr(ITDic(nodo[@"commenter"])[@"displayName"]) ?: @"";
+    m.color = ITStr(mensaje[@"userColor"]) ?: @"";
+    m.texto = texto;
+    m.emotes = emotes;
+    m.esReplay = YES;
+    return m;
+}
+
+@interface ITApi ()
+- (void)comentariosVod:(NSString *)videoID
+                 desde:(NSInteger)desde
+                vistos:(NSMutableSet *)vistos
+            acumulados:(NSMutableArray *)salida
+              paginas:(NSInteger)paginas
+            completion:(ITListaBloque)completion;
+@end
+
 @implementation ITApi
 
 + (instancetype)compartida {
@@ -338,6 +388,7 @@ static void ITEnMain(dispatch_block_t bloque) {
     NSString *q = @"query($slug:ID!){ clip(slug:$slug){"
                   @" id title durationSeconds viewCount createdAt thumbnailURL"
                   @" curator{ displayName }"
+                  @" playbackAccessToken(params:{ platform:\"web\", playerBackend:\"mediaplayer\", playerType:\"site\" }){ value signature }"
                   @" videoQualities{ sourceURL quality frameRate }"
                   @" } }";
     [self peticion:q variables:@{ @"slug" : slug ?: @"" } completion:^(NSDictionary *datos, NSError *error) {
@@ -348,31 +399,84 @@ static void ITEnMain(dispatch_block_t bloque) {
 }
 
 - (void)comentariosVod:(NSString *)videoID completion:(ITListaBloque)completion {
-    NSString *q = @"query($id:ID!){ video(id:$id){ comments(first:50){"
-                  @" edges{ node{ id contentOffsetSeconds commenter{ displayName }"
-                  @" message{ userColor fragments{ text } } } } } } }";
-    [self peticion:q variables:@{ @"id" : videoID ?: @"" } completion:^(NSDictionary *datos, NSError *error) {
-        if (error) { if (completion) completion(nil, error); return; }
-        NSMutableArray *salida = [NSMutableArray array];
-        for (id e in ITArr(ITDic(ITDic(datos[@"video"])[@"comments"])[@"edges"])) {
-            NSDictionary *nodo = ITDic(ITDic(e)[@"node"]);
-            NSDictionary *mensaje = ITDic(nodo[@"message"]);
-            NSMutableString *texto = [NSMutableString string];
-            for (id f in ITArr(mensaje[@"fragments"])) {
-                NSString *t = ITStr(ITDic(f)[@"text"]);
-                if (t) [texto appendString:t];
-            }
-            if (texto.length == 0) continue;
-            ITChatMessage *m = [[ITChatMessage alloc] init];
-            m.identificador = ITStr(nodo[@"id"]) ?: @"";
-            m.offset = ITNum(nodo[@"contentOffsetSeconds"]);
-            m.nombre = ITStr(ITDic(nodo[@"commenter"])[@"displayName"]) ?: @"";
-            m.color = ITStr(mensaje[@"userColor"]) ?: @"";
-            m.texto = texto;
-            m.esReplay = YES;
-            [salida addObject:m];
+    [self comentariosVod:videoID
+                   desde:0
+                  vistos:[NSMutableSet set]
+              acumulados:[NSMutableArray array]
+                paginas:0
+              completion:completion];
+}
+
+- (void)comentariosVod:(NSString *)videoID
+                 desde:(NSInteger)desde
+                vistos:(NSMutableSet *)vistos
+            acumulados:(NSMutableArray *)salida
+              paginas:(NSInteger)paginas
+            completion:(ITListaBloque)completion {
+    if (paginas >= 100 || salida.count >= 6000) {
+        if (completion) {
+            [salida sortUsingComparator:^NSComparisonResult(ITChatMessage *a, ITChatMessage *b) {
+                if (a.offset < b.offset) return NSOrderedAscending;
+                if (a.offset > b.offset) return NSOrderedDescending;
+                return NSOrderedSame;
+            }];
+            completion([salida copy], nil);
         }
-        if (completion) completion(salida, nil);
+        return;
+    }
+
+    NSString *q = @"query($id:ID!,$off:Int!){ video(id:$id){ lengthSeconds"
+                  @" comments(contentOffsetSeconds:$off){ edges{ node{ id contentOffsetSeconds"
+                  @" commenter{ displayName } message{ userColor fragments{ text emote{ id } } }"
+                  @" } } } } }";
+    [self peticion:q variables:@{ @"id" : videoID ?: @"", @"off" : @(desde) }
+        completion:^(NSDictionary *datos, NSError *error) {
+        if (error) {
+            // Si ya hay comentarios, se conserva la parte descargada.
+            if (salida.count > 0) {
+                if (completion) completion([salida copy], nil);
+            } else if (completion) {
+                completion(nil, error);
+            }
+            return;
+        }
+
+        NSDictionary *video = ITDic(datos[@"video"]);
+        double duracion = ITNum(video[@"lengthSeconds"]);
+        NSArray *edges = ITArr(ITDic(video[@"comments"])[@"edges"]);
+        NSInteger maximo = desde;
+        for (id e in edges) {
+            NSDictionary *nodo = ITDic(ITDic(e)[@"node"]);
+            ITChatMessage *m = ITMensajeReplay(nodo);
+            if (!m) continue;
+            NSString *clave = m.identificador.length ? m.identificador
+                : [NSString stringWithFormat:@"%.0f:%@", m.offset, m.texto];
+            if ([vistos containsObject:clave]) continue;
+            [vistos addObject:clave];
+            [salida addObject:m];
+            if (m.offset > maximo) maximo = (NSInteger)m.offset;
+        }
+
+        NSInteger siguiente = maximo + 1;
+        BOOL fin = (edges.count == 0 || siguiente <= desde);
+        if (duracion > 0 && siguiente >= (NSInteger)duracion) fin = YES;
+        if (salida.count >= 6000 || paginas + 1 >= 100) fin = YES;
+        if (fin) {
+            [salida sortUsingComparator:^NSComparisonResult(ITChatMessage *a, ITChatMessage *b) {
+                if (a.offset < b.offset) return NSOrderedAscending;
+                if (a.offset > b.offset) return NSOrderedDescending;
+                return NSOrderedSame;
+            }];
+            if (completion) completion([salida copy], nil);
+            return;
+        }
+
+        [self comentariosVod:videoID
+                       desde:siguiente
+                      vistos:vistos
+                  acumulados:salida
+                    paginas:paginas + 1
+                  completion:completion];
     }];
 }
 

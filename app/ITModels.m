@@ -74,6 +74,9 @@
     c.creado = ITStr(d[@"createdAt"]) ?: @"";
     c.miniatura = ITStr(d[@"thumbnailURL"]) ?: @"";
     c.curador = ITStr(ITDic(d[@"curator"])[@"displayName"]) ?: @"";
+    NSDictionary *token = ITDic(d[@"playbackAccessToken"]);
+    c.token = ITStr(token[@"value"]) ?: @"";
+    c.firma = ITStr(token[@"signature"]) ?: @"";
 
     NSMutableArray *calidades = [NSMutableArray array];
     for (id bruto in ITArr(d[@"videoQualities"])) {
@@ -81,11 +84,8 @@
         NSString *url = ITStr(q[@"sourceURL"]);
         if (url.length == 0) continue;
         NSString *calidad = ITStr(q[@"quality"]) ?: @"";
-        NSInteger alto = 0;
-        NSRange p = [calidad rangeOfString:@"p"];
-        if (p.location != NSNotFound) {
-            alto = [[calidad substringToIndex:p.location] integerValue];
-        }
+        // Twitch devuelve "720" en clips y "720p" en otras respuestas.
+        NSInteger alto = [calidad integerValue];
         [calidades addObject:@{ @"url" : url,
                                 @"calidad" : calidad,
                                 @"alto" : @(alto) }];

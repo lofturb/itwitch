@@ -5,6 +5,7 @@
 #import "ITChatClient.h"
 #import "ITApi.h"
 #import "ITSession.h"
+#import "ITImageCache.h"
 #import <math.h>
 
 #pragma mark - Celda de chat
@@ -15,7 +16,15 @@
 - (void)configurarConMensaje:(ITChatMessage *)m;
 @end
 
-@implementation ITChatCell
+@implementation ITChatCell {
+    ITChatMessage *_mensaje;
+}
+
++ (NSString *)urlDeEmote:(NSString *)identificador {
+    return [NSString stringWithFormat:@"https://static-cdn.jtvnw.net/emoticons/v2/%@/default/dark/1.0",
+            identificador];
+}
+
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
     if (self) {
@@ -48,10 +57,43 @@
             NSFontAttributeName : [UIFont systemFontOfSize:12.5 weight:UIFontWeightSemibold],
             NSForegroundColorAttributeName : color
         }]];
-    [a appendAttributedString:[[NSAttributedString alloc] initWithString:m.texto ?: @"" attributes:@{
+
+    NSString *texto = m.texto ?: @"";
+    NSDictionary *atributos = @{
         NSFontAttributeName : [UIFont systemFontOfSize:12.5],
         NSForegroundColorAttributeName : m.esAccion ? color : [ITTheme textoPrimario]
-    }]];
+    };
+    NSUInteger cursor = 0;
+    for (NSDictionary *emote in m.emotes) {
+        if (![emote isKindOfClass:[NSDictionary class]]) continue;
+        NSInteger inicio = [emote[@"inicio"] integerValue];
+        NSInteger fin = [emote[@"fin"] integerValue];
+        if (inicio < 0 || fin < inicio || (NSUInteger)fin >= texto.length) continue;
+        if ((NSUInteger)inicio < cursor) continue;
+
+        if ((NSUInteger)inicio > cursor) {
+            NSString *previo = [texto substringWithRange:NSMakeRange(cursor, inicio - cursor)];
+            [a appendAttributedString:[[NSAttributedString alloc] initWithString:previo
+                                                                      attributes:atributos]];
+        }
+
+        NSString *nombre = [texto substringWithRange:NSMakeRange(inicio, fin - inicio + 1)];
+        UIImage *imagen = [ITImageCache imagenEnMemoria:[self urlDeEmote:emote[@"id"]]];
+        if (imagen) {
+            NSTextAttachment *adjunto = [[NSTextAttachment alloc] init];
+            adjunto.image = imagen;
+            adjunto.bounds = CGRectMake(0, -2.0, 16.0, 16.0);
+            [a appendAttributedString:[NSAttributedString attributedStringWithAttachment:adjunto]];
+        } else {
+            [a appendAttributedString:[[NSAttributedString alloc] initWithString:nombre
+                                                                      attributes:atributos]];
+        }
+        cursor = (NSUInteger)fin + 1;
+    }
+    if (cursor < texto.length) {
+        [a appendAttributedString:[[NSAttributedString alloc] initWithString:
+            [texto substringFromIndex:cursor] attributes:atributos]];
+    }
     return a;
 }
 
@@ -64,9 +106,31 @@
 }
 
 - (void)configurarConMensaje:(ITChatMessage *)m {
+    _mensaje = m;
     _texto.attributedText = [[self class] atribuidoDeMensaje:m];
     [self setNeedsLayout];
+
+    for (NSDictionary *emote in m.emotes) {
+        if (![emote isKindOfClass:[NSDictionary class]]) continue;
+        NSString *url = [[self class] urlDeEmote:emote[@"id"]];
+        if ([ITImageCache imagenEnMemoria:url]) continue;
+        __weak typeof(self) debil = self;
+        [ITImageCache cargarURL:url completion:^(UIImage *imagen) {
+            if (!imagen) return;
+            ITChatCell *fuerte = debil;
+            if (!fuerte || fuerte->_mensaje != m) return;
+            fuerte->_texto.attributedText = [[fuerte class] atribuidoDeMensaje:m];
+            [fuerte setNeedsLayout];
+        }];
+    }
 }
+
+- (void)prepareForReuse {
+    [super prepareForReuse];
+    _mensaje = nil;
+    _texto.attributedText = nil;
+}
+
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGFloat ancho = self.contentView.bounds.size.width;
@@ -250,6 +314,7 @@
 
 - (void)cargarReplay {
     __typeof(self) debil = self;
+    _aviso.text = @"Cargando chat…";
     [[ITApi compartida] comentariosVod:_videoID completion:^(NSArray *elementos, NSError *error) {
         if (error) {
             debil->_aviso.text = error.localizedDescription ?: @"No se pudo cargar el chat.";

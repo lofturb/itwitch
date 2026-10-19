@@ -47,7 +47,9 @@
 @property (nonatomic, copy) NSString *creado;
 @property (nonatomic, copy) NSString *miniatura;
 @property (nonatomic, copy) NSString *curador;
-@property (nonatomic, strong) NSArray *calidades;   // NSDictionary {url, calidad}
+@property (nonatomic, copy) NSString *token;
+@property (nonatomic, copy) NSString *firma;
+@property (nonatomic, strong) NSArray *calidades;   // NSDictionary {url, calidad, alto}
 + (instancetype)conDiccionario:(NSDictionary *)d;
 @end
 

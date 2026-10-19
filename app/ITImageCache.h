@@ -7,6 +7,8 @@
 // cancela sola (se guarda la URL actual en la propia vista).
 + (void)cargarURL:(NSString *)url en:(UIImageView *)vista;
 + (void)cargarURL:(NSString *)url completion:(void (^)(UIImage *imagen))completion;
+// Solo memoria: para calcular alturas sin tocar el disco ni la red.
++ (UIImage *)imagenEnMemoria:(NSString *)url;
 + (void)cancelarPara:(UIImageView *)vista;
 + (void)limpiarMemoria;
 

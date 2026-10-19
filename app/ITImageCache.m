@@ -94,6 +94,11 @@ static NSString *ITRutaDisco(NSString *clave) {
     objc_setAssociatedObject(vista, kITImagenTarea, tarea, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
++ (UIImage *)imagenEnMemoria:(NSString *)url {
+    if (url.length == 0) return nil;
+    return [ITMemoria() objectForKey:url];
+}
+
 + (void)cargarURL:(NSString *)url completion:(void (^)(UIImage *))completion {
     if (url.length == 0) {
         if (completion) completion(nil);

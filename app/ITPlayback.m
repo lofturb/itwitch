@@ -53,6 +53,14 @@ static NSString *ITCodificar(NSString *texto) {
     }];
 }
 
++ (NSString *)urlClip:(NSString *)base firma:(NSString *)firma token:(NSString *)token {
+    if (base.length == 0) return base;
+    if (firma.length == 0 || token.length == 0) return base;
+    NSString *separador = [base rangeOfString:@"?"].location == NSNotFound ? @"?" : @"&";
+    return [NSString stringWithFormat:@"%@%ssig=%@&token=%@",
+            base, separador, ITCodificar(firma), ITCodificar(token)];
+}
+
 + (void)variantesDeMaster:(NSString *)url
                completion:(void (^)(NSArray *, NSError *))completion {
     NSURL *destino = [NSURL URLWithString:url];
@@ -125,9 +133,28 @@ static NSString *ITCodificar(NSString *texto) {
                 alto = [partes[1] integerValue];
             }
         }
-        NSString *nombre = alto > 0 ? [NSString stringWithFormat:@"%dp", (int)alto] : @"Auto";
-        if ([linea rangeOfString:@"audio_only"].location != NSNotFound) nombre = @"Audio";
-        if ([linea rangeOfString:@"720p60"].location != NSNotFound) nombre = @"720p60";
+
+        // El nombre del flujo viene en VIDEO="720p60" o VIDEO="audio_only".
+        // La URL de Twitch va codificada, asi que no sirve buscarlo en ella.
+        NSString *video = atributosPendientes[@"VIDEO"];
+        if (![video isKindOfClass:[NSString class]]) {
+            NSRange marca = [linea rangeOfString:@"VIDEO=\""];
+            if (marca.location != NSNotFound) {
+                NSUInteger inicio = marca.location + marca.length;
+                NSRange fin = [linea rangeOfString:@"\""
+                                           options:0
+                                             range:NSMakeRange(inicio, linea.length - inicio)];
+                if (fin.location != NSNotFound) {
+                    video = [linea substringWithRange:NSMakeRange(inicio, fin.location - inicio)];
+                }
+            }
+        }
+        NSString *nombre = nil;
+        if ([video isEqualToString:@"audio_only"]) nombre = @"Audio";
+        else if (video.length > 0 && ![video isEqualToString:@"chunked"]) nombre = video;
+        if (nombre.length == 0) {
+            nombre = alto > 0 ? [NSString stringWithFormat:@"%dp", (int)alto] : @"Auto";
+        }
 
         [salida addObject:@{
             @"nombre" : nombre,

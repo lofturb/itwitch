@@ -286,6 +286,7 @@
     }
     NSDictionary *elegida = [self mejorCalidadDe:_clip.calidades];
     NSString *url = elegida[@"url"] ?: [_clip.calidades.firstObject objectForKey:@"url"];
+    url = [ITPlayback urlClip:url firma:_clip.firma token:_clip.token];
     [self prepararURL:url];
 }
 

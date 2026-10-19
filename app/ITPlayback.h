@@ -7,6 +7,8 @@
 + (void)urlDirecto:(NSString *)login completion:(void (^)(NSString *url, NSError *error))completion;
 // Devuelve la URL maestra de usher para un VOD.
 + (void)urlVod:(NSString *)videoID completion:(void (^)(NSString *url, NSError *error))completion;
+// Completa una URL de clip con la firma que exige CloudFront.
++ (NSString *)urlClip:(NSString *)base firma:(NSString *)firma token:(NSString *)token;
 
 // Descarga el master y devuelve las variantes:
 //   @[ @{@"nombre":@"720p", @"url":NSURL, @"ancho":@1280, @"alto":@720}, ... ]
