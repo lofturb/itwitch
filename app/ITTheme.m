@@ -509,6 +509,45 @@ static UIColor *ITAcentoAjustado(NSUInteger hex, BOOL claro) {
         CGContextClosePath(ctx);
         CGContextFillPath(ctx);
 
+    } else if ([forma isEqualToString:@"reloj"]) {
+        // Reloj: circulo y agujas. Se usa en las busquedas recientes.
+        CGContextSetLineWidth(ctx, trazo);
+        CGContextStrokeEllipseInRect(ctx, CGRectMake(0.16 * L, 0.16 * L, 0.68 * L, 0.68 * L));
+        CGContextMoveToPoint(ctx, 0.5 * L, 0.32 * L);
+        CGContextAddLineToPoint(ctx, 0.5 * L, 0.52 * L);
+        CGContextAddLineToPoint(ctx, 0.65 * L, 0.62 * L);
+        CGContextStrokePath(ctx);
+
+    } else if ([forma isEqualToString:@"campana"]) {
+        // Campana de notificaciones.
+        CGContextSetLineWidth(ctx, trazo);
+        CGContextMoveToPoint(ctx, 0.26 * L, 0.68 * L);
+        CGContextAddCurveToPoint(ctx, 0.30 * L, 0.58 * L, 0.30 * L, 0.30 * L, 0.50 * L, 0.22 * L);
+        CGContextAddCurveToPoint(ctx, 0.70 * L, 0.30 * L, 0.70 * L, 0.58 * L, 0.74 * L, 0.68 * L);
+        CGContextClosePath(ctx);
+        CGContextStrokePath(ctx);
+        CGContextMoveToPoint(ctx, 0.22 * L, 0.68 * L);
+        CGContextAddLineToPoint(ctx, 0.78 * L, 0.68 * L);
+        CGContextStrokePath(ctx);
+        CGContextFillEllipseInRect(ctx, CGRectMake(0.43 * L, 0.73 * L, 0.14 * L, 0.10 * L));
+
+    } else if ([forma isEqualToString:@"chat"]) {
+        // Burbuja de chat con tres puntos.
+        CGContextSetLineWidth(ctx, trazo);
+        CGRect burbuja = CGRectMake(0.13 * L, 0.18 * L, 0.74 * L, 0.52 * L);
+        CGContextAddPath(ctx, [UIBezierPath bezierPathWithRoundedRect:burbuja
+                                                        cornerRadius:0.14 * L].CGPath);
+        CGContextStrokePath(ctx);
+        CGContextMoveToPoint(ctx, 0.30 * L, 0.70 * L);
+        CGContextAddLineToPoint(ctx, 0.24 * L, 0.84 * L);
+        CGContextAddLineToPoint(ctx, 0.44 * L, 0.70 * L);
+        CGContextStrokePath(ctx);
+        CGFloat puntos[3] = { 0.34, 0.50, 0.66 };
+        for (int i = 0; i < 3; i++) {
+            CGContextFillEllipseInRect(ctx, CGRectMake(puntos[i] * L - 0.035 * L,
+                                                       0.44 * L, 0.07 * L, 0.07 * L));
+        }
+
     } else if ([forma isEqualToString:@"cerrar"]) {
         CGContextSetLineWidth(ctx, trazo);
         CGContextMoveToPoint(ctx, 0.26 * L, 0.26 * L);
@@ -568,6 +607,19 @@ static UIColor *ITAcentoAjustado(NSUInteger hex, BOOL claro) {
 
     // Las alertas heredan el color de los botones.
     [UIView appearance].tintColor = [self acento];
+}
+
++ (void)aplicarEstiloNavegacion:(UINavigationBar *)barra {
+    barra.barTintColor = [self fondo];
+    barra.tintColor = [self acento];
+    barra.translucent = NO;
+    barra.barStyle = [[self fondoClave] isEqualToString:@"claro"] ? UIBarStyleDefault : UIBarStyleBlack;
+    barra.titleTextAttributes = @{
+        NSForegroundColorAttributeName : [self textoPrimario],
+        NSFontAttributeName : [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold]
+    };
+    barra.shadowImage = [[UIImage alloc] init];
+    [barra setBackgroundImage:[[UIImage alloc] init] forBarMetrics:UIBarMetricsDefault];
 }
 
 + (void)aplicarEstiloTabBar:(UITabBar *)tabBar {

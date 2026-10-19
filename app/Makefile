@@ -16,9 +16,29 @@ iTwitch_FILES = \
 	main.m \
 	AppDelegate.m \
 	ITTheme.m \
-	ITPlaceholderViewController.m
+	ITUtil.m \
+	ITModels.m \
+	ITSession.m \
+	ITImageCache.m \
+	ITApi.m \
+	ITPlayback.m \
+	ITCells.m \
+	ITHomeViewController.m \
+	ITBrowseViewController.m \
+	ITSearchViewController.m \
+	ITFollowingViewController.m \
+	ITProfileViewController.m \
+	ITSettingsViewController.m \
+	ITLoginViewController.m \
+	ITChannelViewController.m \
+	ITCategoryViewController.m \
+	ITCollectionViewController.m \
+	ITDiagnosticsViewController.m \
+	ITChatClient.m \
+	ITChatViewController.m \
+	ITPlayerViewController.m
 
-iTwitch_FRAMEWORKS = UIKit Foundation CoreGraphics QuartzCore AVFoundation MediaPlayer Security
+iTwitch_FRAMEWORKS = UIKit Foundation CoreGraphics QuartzCore AVFoundation MediaPlayer Security CFNetwork
 iTwitch_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Wno-unused-parameter
 iTwitch_RESOURCE_DIRS = Resources
 iTwitch_LDFLAGS = -Wl,-dead_strip

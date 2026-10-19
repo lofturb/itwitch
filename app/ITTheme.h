@@ -60,7 +60,7 @@ extern NSString *const ITThemeCambio;
 // Iconos vectoriales dibujados al vuelo (no hacen falta ficheros de imagen).
 //   Formas: inicio, tendencias, musica, buscar, ajustes, reproducir, chevron,
 //           pausa, atras10, adelante10, descargar, compartir, bucle, velocidad,
-//           pantalla, encoger, canal, lista, cerrar, marca
+//           pantalla, encoger, canal, lista, cerrar, marca, reloj, campana, chat
 + (UIImage *)icono:(NSString *)forma lado:(CGFloat)lado;
 + (UIImage *)icono:(NSString *)forma lado:(CGFloat)lado trazo:(CGFloat)trazo;
 
@@ -71,5 +71,6 @@ extern NSString *const ITThemeCambio;
 
 + (void)prepararAparienciaGlobal;
 + (void)aplicarEstiloTabBar:(UITabBar *)tabBar;
++ (void)aplicarEstiloNavegacion:(UINavigationBar *)barra;
 
 @end
