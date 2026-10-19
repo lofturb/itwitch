@@ -59,7 +59,7 @@
     CGRect r = [a boundingRectWithSize:CGSizeMake(MAX(40.0, ancho - 20.0), CGFLOAT_MAX)
                               options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
                               context:nil];
-    return MAX(30.0, ceil(r.height) + 8.0);
+    return MAX(30.0, ceil(r.size.height) + 8.0);
 }
 
 - (void)configurarConMensaje:(ITChatMessage *)m {
