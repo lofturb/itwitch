@@ -57,7 +57,7 @@ static NSString *ITCodificar(NSString *texto) {
     if (base.length == 0) return base;
     if (firma.length == 0 || token.length == 0) return base;
     NSString *separador = [base rangeOfString:@"?"].location == NSNotFound ? @"?" : @"&";
-    return [NSString stringWithFormat:@"%@%ssig=%@&token=%@",
+    return [NSString stringWithFormat:@"%@%@sig=%@&token=%@",
             base, separador, ITCodificar(firma), ITCodificar(token)];
 }
 
