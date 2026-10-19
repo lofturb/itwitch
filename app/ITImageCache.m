@@ -117,7 +117,7 @@ static NSString *ITRutaDisco(NSString *clave) {
     }
     NSMutableURLRequest *peticion = [NSMutableURLRequest requestWithURL:destino];
     peticion.timeoutInterval = 20.0;
-    [[NSURLSession sharedSession] dataTaskWithRequest:peticion
+    NSURLSessionDataTask *tarea = [[NSURLSession sharedSession] dataTaskWithRequest:peticion
         completionHandler:^(NSData *datos, NSURLResponse *respuesta, NSError *error) {
         UIImage *imagen = datos ? [UIImage imageWithData:datos] : nil;
         if (imagen) {
@@ -129,7 +129,8 @@ static NSString *ITRutaDisco(NSString *clave) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (completion) completion(imagen);
         });
-    }] resume];
+    }];
+    [tarea resume];
 }
 
 + (void)cancelarPara:(UIImageView *)vista {
