@@ -1,0 +1,10 @@
+.theos/
+packages/
+entrega/
+*.ipa
+*.deb
+*.dSYM/
+.DS_Store
+Thumbs.db
+app/Resources/*.png
+app/recursos-generados.txt
