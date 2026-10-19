@@ -80,8 +80,15 @@
         NSDictionary *q = ITDic(bruto);
         NSString *url = ITStr(q[@"sourceURL"]);
         if (url.length == 0) continue;
+        NSString *calidad = ITStr(q[@"quality"]) ?: @"";
+        NSInteger alto = 0;
+        NSRange p = [calidad rangeOfString:@"p"];
+        if (p.location != NSNotFound) {
+            alto = [[calidad substringToIndex:p.location] integerValue];
+        }
         [calidades addObject:@{ @"url" : url,
-                                @"calidad" : ITStr(q[@"quality"]) ?: @"" }];
+                                @"calidad" : calidad,
+                                @"alto" : @(alto) }];
     }
     c.calidades = calidades;
     return c;

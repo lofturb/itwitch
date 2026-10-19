@@ -10,6 +10,7 @@
 
 @interface ITChatCell : UITableViewCell
 @property (nonatomic, strong) UILabel *texto;
++ (CGFloat)alturaParaMensaje:(ITChatMessage *)m ancho:(CGFloat)ancho;
 - (void)configurarConMensaje:(ITChatMessage *)m;
 @end
 
@@ -26,7 +27,8 @@
     }
     return self;
 }
-- (void)configurarConMensaje:(ITChatMessage *)m {
+
++ (NSAttributedString *)atribuidoDeMensaje:(ITChatMessage *)m {
     UIColor *color = ITColorDeChat(m.color, m.nombre);
     NSMutableAttributedString *a = [[NSMutableAttributedString alloc] init];
 
@@ -49,7 +51,19 @@
         NSFontAttributeName : [UIFont systemFontOfSize:12.5],
         NSForegroundColorAttributeName : m.esAccion ? color : [ITTheme textoPrimario]
     }]];
-    _texto.attributedText = a;
+    return a;
+}
+
++ (CGFloat)alturaParaMensaje:(ITChatMessage *)m ancho:(CGFloat)ancho {
+    NSAttributedString *a = [self atribuidoDeMensaje:m];
+    CGRect r = [a boundingRectWithSize:CGSizeMake(MAX(40.0, ancho - 20.0), CGFLOAT_MAX)
+                              options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                              context:nil];
+    return MAX(30.0, ceil(r.height) + 8.0);
+}
+
+- (void)configurarConMensaje:(ITChatMessage *)m {
+    _texto.attributedText = [[self class] atribuidoDeMensaje:m];
     [self setNeedsLayout];
 }
 - (void)layoutSubviews {
@@ -83,6 +97,10 @@
     NSUInteger _replayIndice;
     double _ultimoTiempo;
     UILabel *_aviso;
+    BOOL _recargaPendiente;
+    BOOL _recortePendiente;
+    NSUInteger _filasTabla;
+    NSUInteger _nuevosPendientes;
 }
 
 - (instancetype)initWithCanal:(NSString *)canal {
@@ -219,6 +237,10 @@
         [self sistema:@"Entra en Twitch para escribir en el chat."];
         return;
     }
+    if (!_cliente.conectado) {
+        [self sistema:@"El chat aún se está conectando. Espera un momento."];
+        return;
+    }
     [_cliente enviarMensaje:texto];
     _campo.text = @"";
 }
@@ -243,6 +265,10 @@
         // El usuario ha retrocedido: se reconstruye desde el principio.
         [_mensajes removeAllObjects];
         _replayIndice = 0;
+        _recargaPendiente = NO;
+        _recortePendiente = NO;
+        _nuevosPendientes = 0;
+        _filasTabla = 0;
         [_tabla reloadData];
     }
     _ultimoTiempo = segundos;
@@ -259,6 +285,10 @@
         if (_mensajes.count > 800) {
             [_mensajes removeObjectsInRange:NSMakeRange(0, _mensajes.count - 800)];
         }
+        _recargaPendiente = NO;
+        _recortePendiente = NO;
+        _nuevosPendientes = 0;
+        _filasTabla = _mensajes.count;
         [_tabla reloadData];
         [self bajar];
     }
@@ -289,9 +319,54 @@
 
 - (void)agregar:(ITChatMessage *)m {
     [_mensajes addObject:m];
-    if (_mensajes.count > 800) [_mensajes removeObjectAtIndex:0];
-    [_tabla reloadData];
-    [self bajar];
+    if (_mensajes.count > 800) {
+        [_mensajes removeObjectAtIndex:0];
+        _recortePendiente = YES;
+    }
+    _nuevosPendientes++;
+    [self programarRecarga];
+}
+
+- (void)programarRecarga {
+    if (_recargaPendiente) return;
+    _recargaPendiente = YES;
+    __typeof(self) debil = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.15 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        if (!debil) return;
+        if (!debil->_recargaPendiente) return;
+        debil->_recargaPendiente = NO;
+
+        if (debil->_recortePendiente || debil->_filasTabla > debil->_mensajes.count) {
+            debil->_recortePendiente = NO;
+            debil->_nuevosPendientes = 0;
+            [debil->_tabla reloadData];
+            debil->_filasTabla = debil->_mensajes.count;
+            [debil bajar];
+            return;
+        }
+
+        NSUInteger nuevos = debil->_nuevosPendientes;
+        debil->_nuevosPendientes = 0;
+        if (nuevos == 0) return;
+
+        NSUInteger primero = debil->_filasTabla;
+        NSUInteger ultimo = debil->_mensajes.count;
+        if (primero >= ultimo) {
+            debil->_filasTabla = ultimo;
+            return;
+        }
+
+        NSMutableArray *rutas = [NSMutableArray arrayWithCapacity:ultimo - primero];
+        for (NSUInteger i = primero; i < ultimo; i++) {
+            [rutas addObject:[NSIndexPath indexPathForRow:i inSection:0]];
+        }
+        [debil->_tabla beginUpdates];
+        [debil->_tabla insertRowsAtIndexPaths:rutas withRowAnimation:UITableViewRowAnimationNone];
+        [debil->_tabla endUpdates];
+        debil->_filasTabla = ultimo;
+        [debil bajar];
+    });
 }
 
 - (void)sistema:(NSString *)texto {
@@ -316,12 +391,7 @@
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
     ITChatMessage *m = _mensajes[indexPath.row];
-    NSMutableAttributedString *a = [[NSMutableAttributedString alloc] initWithString:
-        [NSString stringWithFormat:@"%@: %@", m.nombre, m.texto]];
-    CGRect r = [a boundingRectWithSize:CGSizeMake(tableView.bounds.size.width - 20, 999)
-                               options:NSStringDrawingUsesLineFragmentOrigin
-                               context:nil];
-    return MAX(22.0, r.size.height + 8.0);
+    return [ITChatCell alturaParaMensaje:m ancho:tableView.bounds.size.width];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {

@@ -141,6 +141,8 @@ static NSString * const kITReanudar = @"itwitch_reanudar";
     if (indexPath.section == 0 && indexPath.row == 0) {
         if ([[ITSession compartida] haySesion]) {
             [[ITSession compartida] cerrarSesion];
+            [[ITNotifications compartida] detener];
+            [[ITNotifications compartida] limpiarNuevos];
             [self.tableView reloadData];
         } else {
             ITLoginViewController *vc = [[ITLoginViewController alloc] init];

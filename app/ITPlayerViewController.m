@@ -211,17 +211,17 @@
     _btnAtras10.frame = CGRectMake((ancho - 56) / 2 - 76, (altoVideo - 42) / 2, 50, 42);
     _btnAdelante10.frame = CGRectMake((ancho - 56) / 2 + 82, (altoVideo - 42) / 2, 50, 42);
 
-    _slider.frame = CGRectMake(14, altoVideo - 56, ancho - 28, 22);
-    _lblTiempo.frame = CGRectMake(14, altoVideo - 32, 60, 16);
-    _lblDuracion.frame = CGRectMake(ancho - 74, altoVideo - 32, 60, 16);
-    _lblDirecto.frame = CGRectMake(14, altoVideo - 32, 100, 16);
-    _btnIrDirecto.frame = CGRectMake(ancho - 110, altoVideo - 34, 96, 20);
+    _slider.frame = CGRectMake(14, 8, ancho - 28, 22);
+    _lblTiempo.frame = CGRectMake(14, 38, 60, 16);
+    _lblDuracion.frame = CGRectMake(ancho - 74, 38, 60, 16);
+    _lblDirecto.frame = CGRectMake(14, 38, 100, 16);
+    _btnIrDirecto.frame = CGRectMake(ancho - 110, 36, 96, 18);
 
-    _btnCalidad.frame = CGRectMake(76, altoVideo - 24, 46, 20);
-    _btnVelocidad.frame = CGRectMake(124, altoVideo - 24, 36, 20);
-    _btnBucle.frame = CGRectMake(162, altoVideo - 24, 30, 20);
-    _btnChat.frame = CGRectMake(ancho - 96, altoVideo - 24, 30, 20);
-    _btnPantalla.frame = CGRectMake(ancho - 42, altoVideo - 24, 34, 20);
+    _btnCalidad.frame = CGRectMake(76, 54, 46, 20);
+    _btnVelocidad.frame = CGRectMake(124, 54, 36, 20);
+    _btnBucle.frame = CGRectMake(162, 54, 30, 20);
+    _btnChat.frame = CGRectMake(ancho - 96, 54, 30, 20);
+    _btnPantalla.frame = CGRectMake(ancho - 42, 54, 34, 20);
 
     _rueda.center = CGPointMake(ancho / 2, altoVideo / 2);
     _lblError.frame = CGRectMake(20, altoVideo / 2 - 20, ancho - 40, 60);
@@ -237,6 +237,7 @@
 }
 
 - (void)dealloc {
+    [self parar];
     if (_observadorTiempo) [_player removeTimeObserver:_observadorTiempo];
     if (_observadorEstado) [_item removeObserver:self forKeyPath:@"status"];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
@@ -383,6 +384,9 @@
 - (void)reintentar {
     _lblError.hidden = YES;
     _btnReintentar.hidden = YES;
+    double actual = CMTimeGetSeconds(_player.currentTime);
+    if (isfinite(actual) && actual > 0) _posicionInicial = actual;
+    _reanudado = NO;
     [_player pause];
     if (_observadorTiempo) {
         [_player removeTimeObserver:_observadorTiempo];
@@ -728,6 +732,10 @@
 - (void)adelanteDiez { [self saltar:10]; }
 
 - (void)irAlDirecto {
+    if (_esDirecto) {
+        [_player seekToTime:kCMTimePositiveInfinity];
+        return;
+    }
     if (_duracion > 0) {
         [_player seekToTime:CMTimeMakeWithSeconds(MAX(0, _duracion - 3), 600)];
     }
@@ -969,18 +977,38 @@
     [sesion setActive:YES error:nil];
 
     MPRemoteCommandCenter *centro = [MPRemoteCommandCenter sharedCommandCenter];
-    [centro.playCommand addTarget:self action:@selector(comandoPlay)];
-    [centro.pauseCommand addTarget:self action:@selector(comandoPausa)];
-    [centro.togglePlayPauseCommand addTarget:self action:@selector(comandoAlternar)];
-    [centro.skipForwardCommand addTarget:self action:@selector(comandoAdelante)];
-    [centro.skipBackwardCommand addTarget:self action:@selector(comandoAtras)];
+    [centro.playCommand removeTarget:self];
+    [centro.pauseCommand removeTarget:self];
+    [centro.togglePlayPauseCommand removeTarget:self];
+    [centro.skipForwardCommand removeTarget:self];
+    [centro.skipBackwardCommand removeTarget:self];
+    [centro.playCommand addTarget:self action:@selector(comandoPlay:)];
+    [centro.pauseCommand addTarget:self action:@selector(comandoPausa:)];
+    [centro.togglePlayPauseCommand addTarget:self action:@selector(comandoAlternar:)];
+    [centro.skipForwardCommand addTarget:self action:@selector(comandoAdelante:)];
+    [centro.skipBackwardCommand addTarget:self action:@selector(comandoAtras:)];
 }
 
-- (void)comandoPlay { dispatch_async(dispatch_get_main_queue(), ^{ [self reproducir]; }); }
-- (void)comandoPausa { dispatch_async(dispatch_get_main_queue(), ^{ [self pausar]; }); }
-- (void)comandoAlternar { dispatch_async(dispatch_get_main_queue(), ^{ [self alternarReproduccion]; }); }
-- (void)comandoAdelante { dispatch_async(dispatch_get_main_queue(), ^{ [self saltar:10]; }); }
-- (void)comandoAtras { dispatch_async(dispatch_get_main_queue(), ^{ [self saltar:-10]; }); }
+- (MPRemoteCommandHandlerStatus)comandoPlay:(MPRemoteCommandEvent *)evento {
+    dispatch_async(dispatch_get_main_queue(), ^{ [self reproducir]; });
+    return MPRemoteCommandHandlerStatusSuccess;
+}
+- (MPRemoteCommandHandlerStatus)comandoPausa:(MPRemoteCommandEvent *)evento {
+    dispatch_async(dispatch_get_main_queue(), ^{ [self pausar]; });
+    return MPRemoteCommandHandlerStatusSuccess;
+}
+- (MPRemoteCommandHandlerStatus)comandoAlternar:(MPRemoteCommandEvent *)evento {
+    dispatch_async(dispatch_get_main_queue(), ^{ [self alternarReproduccion]; });
+    return MPRemoteCommandHandlerStatusSuccess;
+}
+- (MPRemoteCommandHandlerStatus)comandoAdelante:(MPRemoteCommandEvent *)evento {
+    dispatch_async(dispatch_get_main_queue(), ^{ [self saltar:10]; });
+    return MPRemoteCommandHandlerStatusSuccess;
+}
+- (MPRemoteCommandHandlerStatus)comandoAtras:(MPRemoteCommandEvent *)evento {
+    dispatch_async(dispatch_get_main_queue(), ^{ [self saltar:-10]; });
+    return MPRemoteCommandHandlerStatusSuccess;
+}
 
 - (void)actualizarAhoraSuena {
     NSString *titulo = [self titulo];
@@ -1030,6 +1058,12 @@
         _observadorEstado = nil;
     }
     [_chat detener];
+    MPRemoteCommandCenter *centro = [MPRemoteCommandCenter sharedCommandCenter];
+    [centro.playCommand removeTarget:self];
+    [centro.pauseCommand removeTarget:self];
+    [centro.togglePlayPauseCommand removeTarget:self];
+    [centro.skipForwardCommand removeTarget:self];
+    [centro.skipBackwardCommand removeTarget:self];
     if (!_cedidoAMini) {
         [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo:nil];
     }

@@ -3,6 +3,7 @@
 
 static NSString * const kServicio = @"com.lofturb.itwitch";
 static NSString * const kCuentaToken = @"auth-token";
+static NSString * const kUsuario = @"itwitch_usuario";
 
 @implementation ITSession
 
@@ -23,6 +24,17 @@ static NSString * const kCuentaToken = @"auth-token";
 
 - (BOOL)haySesion {
     return self.token.length > 0;
+}
+
+- (NSDictionary *)usuario {
+    return [[NSUserDefaults standardUserDefaults] dictionaryForKey:kUsuario];
+}
+
+- (void)setUsuario:(NSDictionary *)usuario {
+    NSUserDefaults *ajustes = [NSUserDefaults standardUserDefaults];
+    if (usuario.count > 0) [ajustes setObject:[usuario copy] forKey:kUsuario];
+    else [ajustes removeObjectForKey:kUsuario];
+    [ajustes synchronize];
 }
 
 #pragma mark - Keychain
@@ -77,7 +89,7 @@ static NSString * const kCuentaToken = @"auth-token";
 - (void)cerrarSesion {
     [self borrarToken];
     _token = nil;
-    _usuario = nil;
+    self.usuario = nil;
 
     // Tambien se limpian las cookies de Twitch: si no, UIWebView seguiria
     // mandando la sesion vieja en el siguiente login.

@@ -12,6 +12,7 @@
     UIWebView *_web;
     UIActivityIndicatorView *_rueda;
     UILabel *_aviso;
+    NSTimer *_sondeo;
     BOOL _validando;
 }
 
@@ -51,6 +52,22 @@
 
     [_web loadRequest:[NSURLRequest requestWithURL:
         [NSURL URLWithString:@"https://www.twitch.tv/login"]]];
+
+    // La pagina de Twitch puede actualizar la cookie sin recargar del todo.
+    // Sondeamos el almacen de cookies para no depender de webViewDidFinishLoad.
+    _sondeo = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self
+                                             selector:@selector(buscarCookie)
+                                             userInfo:nil repeats:YES];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    [_sondeo invalidate];
+    _sondeo = nil;
+}
+
+- (void)dealloc {
+    [_sondeo invalidate];
 }
 
 - (void)cancelar {

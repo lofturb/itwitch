@@ -6,6 +6,7 @@
 #import "ITLoginViewController.h"
 #import "ITSettingsViewController.h"
 #import "ITImageCache.h"
+#import "ITNotifications.h"
 
 @implementation ITProfileViewController {
     ITChannel *_usuario;
@@ -124,6 +125,8 @@
         [a addAction:[UIAlertAction actionWithTitle:@"Cerrar sesión" style:UIAlertActionStyleDestructive
             handler:^(UIAlertAction *accion) {
             [[ITSession compartida] cerrarSesion];
+            [[ITNotifications compartida] detener];
+            [[ITNotifications compartida] limpiarNuevos];
             [self actualizar];
         }]];
         [self presentViewController:a animated:YES completion:nil];

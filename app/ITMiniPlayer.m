@@ -1,5 +1,6 @@
 #import "ITMiniPlayer.h"
 #import <AVFoundation/AVFoundation.h>
+#import <MediaPlayer/MediaPlayer.h>
 #import <math.h>
 #import "ITTheme.h"
 #import "ITUtil.h"
@@ -22,6 +23,7 @@ static ITMiniPlayer *gMini = nil;
     UIButton *_cerrar;
     BOOL _arrastrado;
     BOOL _abriendo;
+    BOOL _observaRotacion;
 
     ITStream *_stream;
     ITVideo *_video;
@@ -93,6 +95,8 @@ static ITMiniPlayer *gMini = nil;
     _capa.player = player;
     _rueda.hidden = YES;
     [_rueda stopAnimating];
+    [self prepararMandos];
+    [self actualizarAhoraSuena];
     [_player play];
 }
 
@@ -172,6 +176,8 @@ static ITMiniPlayer *gMini = nil;
     } else {
         [_player replaceCurrentItemWithPlayerItem:_item];
     }
+    [self prepararMandos];
+    [self actualizarAhoraSuena];
     [_rueda startAnimating];
     _rueda.hidden = NO;
 }
@@ -209,7 +215,55 @@ static ITMiniPlayer *gMini = nil;
 - (void)parar {
     [_player pause];
     [self quitarObservador];
+    [self quitarMandos];
+    [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:AVPlayerItemDidPlayToEndTimeNotification object:nil];
+}
+
+#pragma mark - Mandos y ahora suena
+
+- (void)prepararMandos {
+    MPRemoteCommandCenter *centro = [MPRemoteCommandCenter sharedCommandCenter];
+    [centro.playCommand removeTarget:self];
+    [centro.pauseCommand removeTarget:self];
+    [centro.togglePlayPauseCommand removeTarget:self];
+    [centro.playCommand addTarget:self action:@selector(mandoPlay:)];
+    [centro.pauseCommand addTarget:self action:@selector(mandoPausa:)];
+    [centro.togglePlayPauseCommand addTarget:self action:@selector(mandoAlternar:)];
+}
+
+- (void)quitarMandos {
+    MPRemoteCommandCenter *centro = [MPRemoteCommandCenter sharedCommandCenter];
+    [centro.playCommand removeTarget:self];
+    [centro.pauseCommand removeTarget:self];
+    [centro.togglePlayPauseCommand removeTarget:self];
+}
+
+- (MPRemoteCommandHandlerStatus)mandoPlay:(MPRemoteCommandEvent *)evento {
+    dispatch_async(dispatch_get_main_queue(), ^{ [self->_player play]; });
+    return MPRemoteCommandHandlerStatusSuccess;
+}
+
+- (MPRemoteCommandHandlerStatus)mandoPausa:(MPRemoteCommandEvent *)evento {
+    dispatch_async(dispatch_get_main_queue(), ^{ [self->_player pause]; });
+    return MPRemoteCommandHandlerStatusSuccess;
+}
+
+- (MPRemoteCommandHandlerStatus)mandoAlternar:(MPRemoteCommandEvent *)evento {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (self->_player.rate > 0) [self->_player pause];
+        else [self->_player play];
+    });
+    return MPRemoteCommandHandlerStatusSuccess;
+}
+
+- (void)actualizarAhoraSuena {
+    NSString *titulo = _titulo.text ?: @"iTwitch";
+    NSMutableDictionary *info = [NSMutableDictionary dictionary];
+    info[MPMediaItemPropertyTitle] = titulo;
+    info[MPMediaItemPropertyArtist] = _stream.nombre ?: (_video.login ?: @"Twitch");
+    info[MPNowPlayingInfoPropertyPlaybackRate] = @(_player.rate);
+    [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = info;
 }
 
 #pragma mark - Interfaz
@@ -217,6 +271,14 @@ static ITMiniPlayer *gMini = nil;
 - (void)prepararCajaConTitulo:(NSString *)texto {
     UIWindow *ventana = [UIApplication sharedApplication].keyWindow;
     if (!ventana) return;
+
+    if (!_observaRotacion) {
+        _observaRotacion = YES;
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(rotacion)
+                                                     name:UIApplicationDidChangeStatusBarOrientationNotification
+                                                   object:nil];
+    }
 
     if (!_caja) {
         _caja = [[UIView alloc] init];
@@ -307,7 +369,8 @@ static ITMiniPlayer *gMini = nil;
     if (_stream) vc = [[ITPlayerViewController alloc] initWithStream:_stream];
     else if (_video) {
         vc = [[ITPlayerViewController alloc] initWithVideo:_video];
-        vc.posicionInicial = _posicion;
+        double actual = CMTimeGetSeconds(_player.currentTime);
+        vc.posicionInicial = (isfinite(actual) && actual > 0) ? actual : _posicion;
     } else if (_clip) vc = [[ITPlayerViewController alloc] initWithClip:_clip];
     if (!vc) { _abriendo = NO; return; }
 
@@ -334,12 +397,27 @@ static ITMiniPlayer *gMini = nil;
     _caja.hidden = YES;
 }
 
+- (void)rotacion {
+    if (![self visible]) return;
+    if (!_arrastrado) {
+        [self colocarAbajoDerecha];
+        return;
+    }
+    UIWindow *ventana = [UIApplication sharedApplication].keyWindow;
+    if (!ventana) return;
+    CGRect f = _caja.frame;
+    f.origin.x = MAX(8.0, MIN(ventana.bounds.size.width - f.size.width - 8.0, f.origin.x));
+    f.origin.y = MAX(24.0, MIN(ventana.bounds.size.height - f.size.height - 8.0, f.origin.y));
+    _caja.frame = f;
+}
+
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesto shouldReceiveTouch:(UITouch *)toque {
     if (gesto.view == _caja && [toque.view isDescendantOfView:_cerrar]) return NO;
     return YES;
 }
 
 - (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
     [self parar];
 }
 
