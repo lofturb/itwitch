@@ -139,9 +139,23 @@ NSString * const ITNotificationsCambio = @"ITNotificationsCambio";
         return;
     }
 
-    _nuevos = nuevos;
     if (nuevos.count == 0) return;
-    [[UIApplication sharedApplication] setApplicationIconBadgeNumber:(NSInteger)nuevos.count];
+
+    // Se conservan los avisos no leidos de sondeos anteriores.
+    NSMutableArray *acumulados = [NSMutableArray arrayWithArray:_nuevos ?: @[]];
+    for (ITChannel *c in nuevos) {
+        BOOL repetido = NO;
+        for (ITChannel *viejo in acumulados) {
+            if ([viejo.login caseInsensitiveCompare:c.login] == NSOrderedSame) {
+                repetido = YES;
+                break;
+            }
+        }
+        if (!repetido) [acumulados addObject:c];
+    }
+    while (acumulados.count > 30) [acumulados removeObjectAtIndex:0];
+    _nuevos = acumulados;
+    [[UIApplication sharedApplication] setApplicationIconBadgeNumber:(NSInteger)_nuevos.count];
 
     NSUInteger limite = MIN(nuevos.count, (NSUInteger)5);
     for (NSUInteger i = 0; i < limite; i++) {

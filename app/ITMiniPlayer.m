@@ -142,7 +142,8 @@ static ITMiniPlayer *gMini = nil;
         if (alto > 0 && alto <= 480 && (!elegida || alto > [elegida[@"alto"] integerValue])) elegida = c;
     }
     if (!elegida) elegida = _clip.calidades.firstObject;
-    [self reproducirURL:elegida[@"url"]];
+    NSString *url = [ITPlayback urlClip:elegida[@"url"] firma:_clip.firma token:_clip.token];
+    [self reproducirURL:url];
 }
 
 - (NSDictionary *)varianteBajaDe:(NSArray *)variantes {

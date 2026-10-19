@@ -196,17 +196,31 @@
     }];
 }
 
+- (void)configurarFiltro {
+    [_filtro removeAllSegments];
+    if (_pestana == 1) {
+        [_filtro insertSegmentWithTitle:@"Recientes" atIndex:0 animated:NO];
+        [_filtro insertSegmentWithTitle:@"Mas vistos" atIndex:1 animated:NO];
+        [_filtro insertSegmentWithTitle:@"Destacados" atIndex:2 animated:NO];
+    } else if (_pestana == 2) {
+        [_filtro insertSegmentWithTitle:@"Todo" atIndex:0 animated:NO];
+        [_filtro insertSegmentWithTitle:@"Mes" atIndex:1 animated:NO];
+        [_filtro insertSegmentWithTitle:@"Semana" atIndex:2 animated:NO];
+        [_filtro insertSegmentWithTitle:@"Dia" atIndex:3 animated:NO];
+    }
+    _filtro.selectedSegmentIndex = 0;
+}
+
 - (void)cambiarPestana {
     _pestana = _pestanas.selectedSegmentIndex;
     _filtro.hidden = !(_pestana == 1 || _pestana == 2);
+    [self configurarFiltro];
     [self colocarCabecera];
     self.tableView.tableHeaderView = _cabecera;
     if (_pestana == 1) {
-        _filtro.selectedSegmentIndex = 0;
         _tipoVideo = @"ARCHIVE";
         _ordenVideo = @"TIME";
     } else if (_pestana == 2) {
-        _filtro.selectedSegmentIndex = 0;
         _periodoClips = @"ALL_TIME";
     }
     [self cargarPestana];
@@ -219,7 +233,9 @@
         else { _tipoVideo = @"HIGHLIGHT"; _ordenVideo = @"TIME"; }
     } else if (_pestana == 2) {
         NSArray *periodos = @[ @"ALL_TIME", @"LAST_MONTH", @"LAST_WEEK", @"LAST_DAY" ];
-        _periodoClips = periodos[_filtro.selectedSegmentIndex];
+        if (_filtro.selectedSegmentIndex < (NSInteger)periodos.count) {
+            _periodoClips = periodos[_filtro.selectedSegmentIndex];
+        }
     }
     [self cargarPestana];
 }
