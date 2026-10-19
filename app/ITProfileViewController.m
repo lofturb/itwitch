@@ -139,7 +139,7 @@
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 2; }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return section == 0 ? 2 : 1;
+    return section == 0 ? 2 : 4;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
@@ -165,7 +165,8 @@
             c.imageView.image = [ITTheme icono:@"canal" lado:20];
         }
     } else {
-        c.textLabel.text = @"Acerca de iTwitch";
+        NSArray *titulos = @[ @"Suscripciones", @"Bits", @"Drops", @"Acerca de iTwitch" ];
+        c.textLabel.text = titulos[indexPath.row];
         c.imageView.image = [ITTheme icono:@"marca" lado:20];
     }
     c.imageView.tintColor = [ITTheme acento];
@@ -179,6 +180,18 @@
         [self.navigationController pushViewController:vc animated:YES];
     } else if (indexPath.section == 0 && indexPath.row == 1) {
         [self.tabBarController setSelectedIndex:3];
+    } else if (indexPath.section == 1 && indexPath.row == 0) {
+        [self informar:@"Suscripciones"
+               mensaje:@"Las suscripciones se contratan y renuevan en Twitch. iTwitch es un cliente no oficial y no puede comprarlas ni gestionarlas."
+                   url:@"https://www.twitch.tv/subs"];
+    } else if (indexPath.section == 1 && indexPath.row == 1) {
+        [self informar:@"Bits"
+               mensaje:@"Los Bits se compran y se usan en Twitch. Esta app solo muestra los canales y el chat; no vende ni canjea Bits."
+                   url:@"https://www.twitch.tv/bits"];
+    } else if (indexPath.section == 1 && indexPath.row == 2) {
+        [self informar:@"Drops"
+               mensaje:@"Los Drops dependen de Twitch y de cada juego. Para reclamarlos, usa el sitio web o la app oficial de Twitch."
+                   url:@"https://www.twitch.tv/drops"];
     } else {
         UIAlertController *a = [UIAlertController alertControllerWithTitle:@"iTwitch 1.0.0"
             message:@"Cliente no oficial de Twitch para iOS 9.3.5 (armv7).\n\nNo está afiliado a Twitch Interactive, Inc."
@@ -186,6 +199,21 @@
         [a addAction:[UIAlertAction actionWithTitle:@"Cerrar" style:UIAlertActionStyleDefault handler:nil]];
         [self presentViewController:a animated:YES completion:nil];
     }
+}
+
+- (void)informar:(NSString *)titulo mensaje:(NSString *)mensaje url:(NSString *)url {
+    UIAlertController *a = [UIAlertController alertControllerWithTitle:titulo
+                                                              message:mensaje
+                                                       preferredStyle:UIAlertControllerStyleAlert];
+    NSURL *destino = [NSURL URLWithString:url];
+    if (destino) {
+        [a addAction:[UIAlertAction actionWithTitle:@"Abrir en Twitch" style:UIAlertActionStyleDefault
+            handler:^(UIAlertAction *accion) {
+            [[UIApplication sharedApplication] openURL:destino];
+        }]];
+    }
+    [a addAction:[UIAlertAction actionWithTitle:@"Cerrar" style:UIAlertActionStyleCancel handler:nil]];
+    [self presentViewController:a animated:YES completion:nil];
 }
 
 @end

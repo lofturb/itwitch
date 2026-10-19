@@ -36,6 +36,7 @@ iTwitch_FILES = \
 	ITDiagnosticsViewController.m \
 	ITChatClient.m \
 	ITChatViewController.m \
+	ITMiniPlayer.m \
 	ITPlayerViewController.m
 
 iTwitch_FRAMEWORKS = UIKit Foundation CoreGraphics QuartzCore AVFoundation MediaPlayer Security CFNetwork

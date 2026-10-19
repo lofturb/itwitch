@@ -304,7 +304,7 @@ static void ITEnMain(dispatch_block_t bloque) {
                   @" params:{ platform:\"web\", playerBackend:\"mediaplayer\", playerType:\"site\" }"
                   @"){ value signature } }";
     [self peticion:q variables:@{ @"login" : login ?: @"" } completion:^(NSDictionary *datos, NSError *error) {
-        if (error) { if (completion) completion(nil, error); return; }
+        if (error) { if (completion) completion(nil, nil, error); return; }
         NSDictionary *t = ITDic(datos[@"streamPlaybackAccessToken"]);
         NSString *valor = ITStr(t[@"value"]);
         NSString *firma = ITStr(t[@"signature"]);
@@ -322,7 +322,7 @@ static void ITEnMain(dispatch_block_t bloque) {
                   @" params:{ platform:\"web\", playerBackend:\"mediaplayer\", playerType:\"site\" }"
                   @"){ value signature } }";
     [self peticion:q variables:@{ @"id" : videoID ?: @"" } completion:^(NSDictionary *datos, NSError *error) {
-        if (error) { if (completion) completion(nil, error); return; }
+        if (error) { if (completion) completion(nil, nil, error); return; }
         NSDictionary *t = ITDic(datos[@"videoPlaybackAccessToken"]);
         NSString *valor = ITStr(t[@"value"]);
         NSString *firma = ITStr(t[@"signature"]);

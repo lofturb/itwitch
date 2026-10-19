@@ -7,6 +7,7 @@
 #import "ITImageCache.h"
 #import "ITSettingsViewController.h"
 #import "ITChatViewController.h"
+#import "ITMiniPlayer.h"
 
 @interface ITPlayerViewController () <UIGestureRecognizerDelegate>
 @end
@@ -23,6 +24,8 @@
     BOOL _arrastrando;
     BOOL _bucle;
     BOOL _iniciado;
+    BOOL _reanudado;
+    NSTimeInterval _ultimoGuardado;
 
     UIView *_vistaVideo;
     AVPlayer *_player;
@@ -143,6 +146,7 @@
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    [[ITMiniPlayer compartida] cerrar];
     self.navigationController.navigationBarHidden = YES;
     [[UIApplication sharedApplication] setStatusBarHidden:YES withAnimation:UIStatusBarAnimationFade];
     [[UIApplication sharedApplication] setIdleTimerDisabled:YES];
@@ -154,7 +158,25 @@
     [[UIApplication sharedApplication] setStatusBarHidden:NO withAnimation:UIStatusBarAnimationFade];
     [[UIApplication sharedApplication] setIdleTimerDisabled:NO];
     if (self.isMovingFromParentViewController || self.isBeingDismissed) {
+        if (!_esDirecto && !_esClip) {
+            [self guardarProgresoEn:CMTimeGetSeconds(_player.currentTime)];
+        }
+        [self minimizarSiProcede];
         [self parar];
+    }
+}
+
+- (void)minimizarSiProcede {
+    if (!_iniciado || _player.rate <= 0) return;
+    if (_stream) {
+        [[ITMiniPlayer compartida] mostrarStream:_stream];
+    } else if (_video) {
+        double posicion = CMTimeGetSeconds(_player.currentTime);
+        if (isfinite(posicion) && posicion > 0) {
+            [[ITMiniPlayer compartida] mostrarVideo:_video posicion:posicion];
+        }
+    } else if (_clip) {
+        [[ITMiniPlayer compartida] mostrarClip:_clip];
     }
 }
 
@@ -369,6 +391,7 @@
             _lblDuracion.text = ITDuracion(_duracion);
         }
         [self actualizarBotonPlay];
+        [self reanudarSiProcede];
         [self reproducir];
         [self actualizarAhoraSuena];
     } else if (_item.status == AVPlayerItemStatusFailed) {
@@ -417,6 +440,10 @@
         [_player play];
         return;
     }
+    if (!_esDirecto && !_esClip) {
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:[self claveProgreso]];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+    }
     [self actualizarBotonPlay];
     [self mostrarControles:YES];
     [_timerOcultar invalidate];
@@ -436,6 +463,14 @@
         _slider.value = MIN(_duracion, MAX(0, segundos));
     }
     _lblTiempo.text = ITDuracion(segundos);
+
+    if (!_esDirecto && !_esClip && [[ITSettingsViewController reanudarVod]]) {
+        NSTimeInterval ahora = [NSDate timeIntervalSinceReferenceDate];
+        if (ahora - _ultimoGuardado > 5.0) {
+            _ultimoGuardado = ahora;
+            [self guardarProgresoEn:segundos];
+        }
+    }
 
     if (_chat && _chatCargado && !_esDirecto) {
         [_chat actualizarTiempo:segundos];
@@ -874,6 +909,43 @@
     [_chat detener];
     [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+#pragma mark - Progreso de VOD
+
+- (NSString *)claveProgreso {
+    if (!_video.identificador.length) return nil;
+    return [@"itwitch_pos_" stringByAppendingString:_video.identificador];
+}
+
+- (void)guardarProgresoEn:(double)segundos {
+    NSString *clave = [self claveProgreso];
+    if (!clave || !isfinite(segundos) || _duracion <= 0) return;
+    NSUserDefaults *ajustes = [NSUserDefaults standardUserDefaults];
+    if (segundos < 10.0 || segundos > _duracion - 15.0) {
+        [ajustes removeObjectForKey:clave];
+    } else {
+        [ajustes setDouble:segundos forKey:clave];
+    }
+    [ajustes synchronize];
+}
+
+- (void)reanudarSiProcede {
+    if (_esDirecto || _esClip || _reanudado) return;
+    _reanudado = YES;
+    if (![[ITSettingsViewController reanudarVod]]) return;
+    NSString *clave = [self claveProgreso];
+    if (!clave) return;
+    double guardado = _posicionInicial > 0 ? _posicionInicial :
+        [[NSUserDefaults standardUserDefaults] doubleForKey:clave];
+    if (guardado < 10.0 || _duracion <= 0 || guardado > _duracion - 15.0) {
+        if (guardado > 0) [[NSUserDefaults standardUserDefaults] removeObjectForKey:clave];
+        return;
+    }
+    [_player seekToTime:CMTimeMakeWithSeconds(guardado, 600)
+      toleranceBefore:kCMTimeZero toleranceAfter:kCMTimeZero];
+    _slider.value = guardado;
+    _lblTiempo.text = ITDuracion(guardado);
 }
 
 @end
