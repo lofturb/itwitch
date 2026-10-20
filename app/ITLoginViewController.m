@@ -14,6 +14,7 @@
     UILabel *_aviso;
     NSTimer *_sondeo;
     BOOL _validando;
+    NSString *_cookieRechazada;
 }
 
 - (void)viewDidLoad {
@@ -95,7 +96,8 @@
     NSString *token = nil;
     for (NSHTTPCookie *cookie in cookies) {
         if ([cookie.name isEqualToString:@"auth-token"] &&
-            [cookie.domain rangeOfString:@"twitch.tv"].location != NSNotFound) {
+            [cookie.domain rangeOfString:@"twitch.tv"].location != NSNotFound &&
+            ![cookie.value isEqualToString:_cookieRechazada]) {
             token = cookie.value;
             break;
         }
@@ -116,10 +118,12 @@
                 [ITSession compartida].usuario = @{ @"login" : c.login ?: @"",
                                                     @"id" : c.identificador ?: @"" };
             }
+            debil->_cookieRechazada = nil;
             [[ITNotifications compartida] comenzar];
             [debil dismissViewControllerAnimated:YES completion:nil];
         } else {
             [[ITSession compartida] cerrarSesion];
+            debil->_cookieRechazada = token;
             debil->_aviso.text = @"Twitch no ha aceptado la sesión. Prueba a pegar el token a mano.";
         }
     }];

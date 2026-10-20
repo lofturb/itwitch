@@ -114,6 +114,7 @@ NSString * const ITNotificationsCambio = @"ITNotificationsCambio";
 }
 
 - (void)procesarSeguidos:(NSArray *)canales {
+    if (![ITNotifications avisosActivos]) return;
     NSUserDefaults *ajustes = [NSUserDefaults standardUserDefaults];
     NSArray *previos = [ajustes arrayForKey:kITVivosConocidos];
     BOOL primeraVez = (previos == nil);

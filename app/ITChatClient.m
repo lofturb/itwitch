@@ -5,12 +5,15 @@
 #import <math.h>
 
 @interface ITChatClient () <NSStreamDelegate>
+- (void)procesarDatos;
+- (void)procesarBuffer;
 @end
 
 @implementation ITChatClient {
     NSInputStream *_entrada;
     NSOutputStream *_salida;
     NSMutableString *_buffer;
+    NSMutableData *_datosPendientes;
     NSString *_canal;
     NSString *_nick;
     BOOL _abierto;
@@ -23,6 +26,7 @@
     self = [super init];
     if (self) {
         _buffer = [NSMutableString string];
+        _datosPendientes = [NSMutableData data];
     }
     return self;
 }
@@ -47,6 +51,7 @@
     [_reconexion invalidate];
     _reconexion = nil;
     _buffer = [NSMutableString string];
+    _datosPendientes = [NSMutableData data];
     _abierto = NO;
     _conectado = NO;
 
@@ -105,6 +110,7 @@
     }
     _abierto = NO;
     _conectado = NO;
+    [_datosPendientes setLength:0];
 }
 
 - (void)stream:(NSStream *)stream handleEvent:(NSStreamEvent)evento {
@@ -134,11 +140,10 @@
             uint8_t buf[4096];
             NSInteger leidos = [_entrada read:buf maxLength:sizeof(buf)];
             if (leidos > 0) {
-                NSString *texto = [[NSString alloc] initWithBytes:buf length:leidos encoding:NSUTF8StringEncoding];
-                if (texto) {
-                    [_buffer appendString:texto];
-                    [self procesarBuffer];
-                }
+                // Se acumulan bytes: un carácter UTF-8 puede quedar partido
+                // entre dos lecturas del socket.
+                [_datosPendientes appendBytes:buf length:(NSUInteger)leidos];
+                [self procesarDatos];
             }
             break;
         }
@@ -194,6 +199,31 @@
 }
 
 #pragma mark - Parseo
+
+- (void)procesarDatos {
+    if (_datosPendientes.length == 0) return;
+
+    // Solo se decodifican líneas completas. Así no se pierde un mensaje
+    // cuando el último carácter multibyte llega en la siguiente lectura.
+    const uint8_t *bytes = _datosPendientes.bytes;
+    NSInteger ultimo = -1;
+    for (NSInteger i = (NSInteger)_datosPendientes.length - 1; i >= 0; i--) {
+        if (bytes[i] == '\n') { ultimo = i; break; }
+    }
+    if (ultimo < 0) return;
+
+    NSUInteger corte = (NSUInteger)ultimo + 1;
+    NSData *completos = [_datosPendientes subdataWithRange:NSMakeRange(0, corte)];
+    [_datosPendientes replaceBytesInRange:NSMakeRange(0, corte)
+                                withBytes:NULL length:0];
+
+    NSString *texto = [[NSString alloc] initWithData:completos encoding:NSUTF8StringEncoding];
+    if (!texto) texto = [[NSString alloc] initWithData:completos encoding:NSISOLatin1StringEncoding];
+    if (texto) {
+        [_buffer appendString:texto];
+        [self procesarBuffer];
+    }
+}
 
 - (void)procesarBuffer {
     while (YES) {
