@@ -105,7 +105,8 @@ de `UIWebView` suele ser rechazado por Twitch; usa el token manual si falla.
 - **Reproductor propio**: directo, VOD y clips; calidad, velocidad, salto de
   10 s, pantalla completa, AirPlay, compartir, copiar enlace, abrir en Twitch y
   menú de reporte.
-- **Chat**: IRC sobre TLS, anónimo o con cuenta; chat replay en VODs.
+- **Chat**: IRC sobre TLS, anónimo o con cuenta; emotes de Twitch y chat replay
+  en VODs.
 - **Mini reproductor**: sigue sonando al cerrar el reproductor, se arrastra, se
   cierra y vuelve al reproductor grande. Al minimizar se reutiliza el mismo
   `AVPlayer`, sin recargar el vídeo.
@@ -123,7 +124,10 @@ de `UIWebView` suele ser rechazado por Twitch; usa el token manual si falla.
 La API pública de Twitch no permite algunas cosas que sí hace la app oficial:
 
 - No hay búsqueda **global** de vídeos o clips; solo dentro de un canal.
-- No se puede seguir o dejar de seguir desde la app (solo leer la lista).
+- No se puede seguir o dejar de seguir desde la app (solo leer la lista). El
+  botón de seguir del canal abre su página web de Twitch.
+- El chat replay se descarga por tramos y se limita a **6000 mensajes** para no
+  agotar la memoria de un A5 en VODs muy largos.
 - No hay compras, suscripciones, Bits, Drops, predicciones, raids ni whispers.
 - No se pueden crear clips ni gestionar el directo.
 - No hay notificaciones push reales: haría falta un servidor APNs propio. Los

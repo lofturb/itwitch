@@ -284,10 +284,33 @@
         [self mostrarError:@"Este clip no tiene una calidad reproducible."];
         return;
     }
-    NSDictionary *elegida = [self mejorCalidadDe:_clip.calidades];
-    NSString *url = elegida[@"url"] ?: [_clip.calidades.firstObject objectForKey:@"url"];
-    url = [ITPlayback urlClip:url firma:_clip.firma token:_clip.token];
-    [self prepararURL:url];
+
+    // Las URLs de los clips necesitan la firma; se preparan para el menu.
+    NSMutableArray *variantes = [NSMutableArray array];
+    for (NSDictionary *q in _clip.calidades) {
+        NSString *base = q[@"url"];
+        if (base.length == 0) continue;
+        NSString *firmada = [ITPlayback urlClip:base firma:_clip.firma token:_clip.token];
+        NSURL *destino = [NSURL URLWithString:firmada];
+        if (!destino) continue;
+        NSInteger alto = [q[@"alto"] integerValue];
+        NSString *nombre = alto > 0 ? [NSString stringWithFormat:@"%dp", (int)alto]
+                                    : (q[@"calidad"] ?: @"Auto");
+        [variantes addObject:@{ @"nombre" : nombre,
+                                @"url" : destino,
+                                @"alto" : @(alto),
+                                @"banda" : @0 }];
+    }
+    _variantes = variantes;
+    _varianteActual = nil;
+    [_btnCalidad setTitle:@"Auto" forState:UIControlStateNormal];
+
+    NSDictionary *elegida = [self mejorCalidadDe:variantes];
+    if (!elegida) {
+        [self mostrarError:@"Este clip no tiene una calidad reproducible."];
+        return;
+    }
+    [self prepararURL:[elegida[@"url"] absoluteString]];
 }
 
 - (void)cargarVariantesYReproducir:(NSString *)url {
@@ -701,11 +724,7 @@
             _btnVelocidad.hidden = YES;
         }
     }
-    if (_esClip) {
-        _btnCalidad.hidden = YES;
-    } else {
-        _btnBucle.hidden = YES;
-    }
+    _btnBucle.hidden = YES;
 
     [self mostrarControles:YES];
 }
@@ -827,7 +846,15 @@
         message:nil preferredStyle:UIAlertControllerStyleActionSheet];
     [a addAction:[UIAlertAction actionWithTitle:@"Auto" style:UIAlertActionStyleDefault
         handler:^(UIAlertAction *accion) {
-        [self cambiarAURL:self->_urlMaster variante:nil];
+        if (self->_esClip) {
+            NSDictionary *mejor = [self mejorCalidadDe:self->_clip.calidades];
+            NSString *url = [ITPlayback urlClip:mejor[@"url"]
+                                          firma:self->_clip.firma
+                                          token:self->_clip.token];
+            [self cambiarAURL:url variante:nil];
+        } else {
+            [self cambiarAURL:self->_urlMaster variante:nil];
+        }
     }]];
     for (NSDictionary *v in _variantes) {
         NSString *nombre = v[@"nombre"] ?: @"Auto";

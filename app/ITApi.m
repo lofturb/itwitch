@@ -444,6 +444,7 @@ static ITChatMessage *ITMensajeReplay(NSDictionary *nodo) {
         NSDictionary *video = ITDic(datos[@"video"]);
         double duracion = ITNum(video[@"lengthSeconds"]);
         NSArray *edges = ITArr(ITDic(video[@"comments"])[@"edges"]);
+        NSInteger antes = (NSInteger)salida.count;
         NSInteger maximo = desde;
         for (id e in edges) {
             NSDictionary *nodo = ITDic(ITDic(e)[@"node"]);
@@ -459,6 +460,8 @@ static ITChatMessage *ITMensajeReplay(NSDictionary *nodo) {
 
         NSInteger siguiente = maximo + 1;
         BOOL fin = (edges.count == 0 || siguiente <= desde);
+        // Sin mensajes nuevos solo queda solapamiento: no se sigue pidiendo.
+        if ((NSInteger)salida.count == antes) fin = YES;
         if (duracion > 0 && siguiente >= (NSInteger)duracion) fin = YES;
         if (salida.count >= 6000 || paginas + 1 >= 100) fin = YES;
         if (fin) {

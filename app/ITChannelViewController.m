@@ -109,7 +109,7 @@
     [_cabecera addSubview:_botonDirecto];
 
     _botonSeguir = [UIButton buttonWithType:UIButtonTypeSystem];
-    [_botonSeguir setTitle:@"Seguir" forState:UIControlStateNormal];
+    [_botonSeguir setTitle:@"Seguir web" forState:UIControlStateNormal];
     [_botonSeguir setTitleColor:[ITTheme textoPrimario] forState:UIControlStateNormal];
     _botonSeguir.backgroundColor = [ITTheme superficieAlta];
     _botonSeguir.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
@@ -200,13 +200,13 @@
     [_filtro removeAllSegments];
     if (_pestana == 1) {
         [_filtro insertSegmentWithTitle:@"Recientes" atIndex:0 animated:NO];
-        [_filtro insertSegmentWithTitle:@"Mas vistos" atIndex:1 animated:NO];
+        [_filtro insertSegmentWithTitle:@"Más vistos" atIndex:1 animated:NO];
         [_filtro insertSegmentWithTitle:@"Destacados" atIndex:2 animated:NO];
     } else if (_pestana == 2) {
         [_filtro insertSegmentWithTitle:@"Todo" atIndex:0 animated:NO];
         [_filtro insertSegmentWithTitle:@"Mes" atIndex:1 animated:NO];
         [_filtro insertSegmentWithTitle:@"Semana" atIndex:2 animated:NO];
-        [_filtro insertSegmentWithTitle:@"Dia" atIndex:3 animated:NO];
+        [_filtro insertSegmentWithTitle:@"Día" atIndex:3 animated:NO];
     }
     _filtro.selectedSegmentIndex = 0;
 }

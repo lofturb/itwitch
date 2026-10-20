@@ -32,7 +32,7 @@ por AirDrop, correo o Filza.
 - Canal con Inicio, Vídeos, Clips, Colecciones y Acerca de.
 - Reproductor propio: directo, VOD y clips, con calidad, velocidad, chat,
   pantalla completa, AirPlay, compartir y menú de opciones.
-- Chat en directo por IRC/TLS y chat replay en VODs.
+- Chat en directo por IRC/TLS, emotes de Twitch y chat replay en VODs.
 - Mini reproductor flotante que reutiliza el mismo `AVPlayer`.
 - Reanudación de VOD y reproducción encadenada en colecciones.
 - Avisos locales de nuevos directos de canales seguidos.
@@ -57,7 +57,8 @@ El token se guarda en el Keychain. No lo compartas.
 - La API pública no permite buscar vídeos o clips globalmente, solo dentro de
   cada canal.
 - No se puede seguir/dejar de seguir, comprar Bits, suscribirse, crear clips ni
-  gestionar el directo.
+  gestionar el directo. El botón de seguir del canal abre su página web.
+- El chat replay se descarga por tramos y se limita a 6000 mensajes.
 - Los avisos son locales: no hay push real porque haría falta un servidor APNs.
 - No hay Chromecast; AirPlay depende de la red local.
 
