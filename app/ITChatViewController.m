@@ -253,6 +253,7 @@
     [super viewDidLayoutSubviews];
     CGFloat alto = self.view.bounds.size.height;
     CGFloat ancho = self.view.bounds.size.width;
+    _aviso.frame = CGRectMake(8, 8, ancho - 16, 34);
     if (_esReplay) {
         _tabla.frame = CGRectMake(0, 0, ancho, alto);
         _barra.hidden = YES;
@@ -339,6 +340,7 @@
     }
     _ultimoTiempo = segundos;
 
+    NSUInteger antes = _mensajes.count;
     BOOL cambiado = NO;
     while (_replayIndice < _replayTodos.count) {
         ITChatMessage *m = _replayTodos[_replayIndice];
@@ -350,13 +352,13 @@
     if (cambiado) {
         if (_mensajes.count > 800) {
             [_mensajes removeObjectsInRange:NSMakeRange(0, _mensajes.count - 800)];
+            _recortePendiente = YES;
+        } else {
+            _nuevosPendientes += _mensajes.count - antes;
         }
-        _recargaPendiente = NO;
-        _recortePendiente = NO;
-        _nuevosPendientes = 0;
-        _filasTabla = _mensajes.count;
-        [_tabla reloadData];
-        [self bajar];
+        // Igual que el chat en directo: se insertan filas en vez de recargar
+        // toda la tabla varias veces por segundo en un A5.
+        [self programarRecarga];
     }
 }
 

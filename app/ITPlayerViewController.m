@@ -195,44 +195,53 @@
     CGFloat alto = self.view.bounds.size.height;
     BOOL horizontal = ancho > alto;
 
+    // En iPad en horizontal el chat cabe al lado del vídeo. En un iPhone
+    // el vídeo quedaría demasiado estrecho, así que se mantiene el chat
+    // inferior del modo vertical.
+    BOOL chatLateral = (_chat != nil && _chatActivo && horizontal && ancho >= 640.0);
+    CGFloat anchoChat = chatLateral ? MIN(320.0, MAX(240.0, ancho * 0.34)) : 0.0;
+    CGFloat anchoVideo = ancho - anchoChat;
+
     CGFloat altoVideo = (horizontal || _pantallaCompleta) ? alto : MIN(ancho * 9.0 / 16.0, alto * 0.64);
-    _vistaVideo.frame = CGRectMake(0, 0, ancho, altoVideo);
+    _vistaVideo.frame = CGRectMake(0, 0, anchoVideo, altoVideo);
     _capa.frame = _vistaVideo.bounds;
 
     _controles.frame = _vistaVideo.bounds;
-    _barraSuperior.frame = CGRectMake(0, 0, ancho, 44);
-    _barraInferior.frame = CGRectMake(0, altoVideo - 78, ancho, 78);
+    _barraSuperior.frame = CGRectMake(0, 0, anchoVideo, 44);
+    _barraInferior.frame = CGRectMake(0, altoVideo - 78, anchoVideo, 78);
 
     _btnAtras.frame = CGRectMake(2, 2, 40, 40);
-    _lblTitulo.frame = CGRectMake(46, 2, ancho - 178, 40);
-    _ruta.frame = CGRectMake(ancho - 128, 2, 40, 40);
-    _btnMas.frame = CGRectMake(ancho - 88, 2, 40, 40);
-    _btnCompartir.frame = CGRectMake(ancho - 46, 2, 40, 40);
+    _lblTitulo.frame = CGRectMake(46, 2, anchoVideo - 178, 40);
+    _ruta.frame = CGRectMake(anchoVideo - 128, 2, 40, 40);
+    _btnMas.frame = CGRectMake(anchoVideo - 88, 2, 40, 40);
+    _btnCompartir.frame = CGRectMake(anchoVideo - 46, 2, 40, 40);
 
-    _btnPlay.frame = CGRectMake((ancho - 56) / 2, (altoVideo - 56) / 2, 56, 56);
-    _btnAtras10.frame = CGRectMake((ancho - 56) / 2 - 76, (altoVideo - 42) / 2, 50, 42);
-    _btnAdelante10.frame = CGRectMake((ancho - 56) / 2 + 82, (altoVideo - 42) / 2, 50, 42);
+    _btnPlay.frame = CGRectMake((anchoVideo - 56) / 2, (altoVideo - 56) / 2, 56, 56);
+    _btnAtras10.frame = CGRectMake((anchoVideo - 56) / 2 - 76, (altoVideo - 42) / 2, 50, 42);
+    _btnAdelante10.frame = CGRectMake((anchoVideo - 56) / 2 + 82, (altoVideo - 42) / 2, 50, 42);
 
-    _slider.frame = CGRectMake(14, 8, ancho - 28, 22);
+    _slider.frame = CGRectMake(14, 8, anchoVideo - 28, 22);
     _lblTiempo.frame = CGRectMake(14, 38, 60, 16);
-    _lblDuracion.frame = CGRectMake(ancho - 74, 38, 60, 16);
+    _lblDuracion.frame = CGRectMake(anchoVideo - 74, 38, 60, 16);
     _lblDirecto.frame = CGRectMake(14, 38, 100, 16);
-    _btnIrDirecto.frame = CGRectMake(ancho - 110, 36, 96, 18);
+    _btnIrDirecto.frame = CGRectMake(anchoVideo - 110, 36, 96, 18);
 
     _btnCalidad.frame = CGRectMake(76, 54, 46, 20);
     _btnVelocidad.frame = CGRectMake(124, 54, 36, 20);
     _btnBucle.frame = CGRectMake(162, 54, 30, 20);
-    _btnChat.frame = CGRectMake(ancho - 96, 54, 30, 20);
-    _btnPantalla.frame = CGRectMake(ancho - 42, 54, 34, 20);
+    _btnChat.frame = CGRectMake(anchoVideo - 96, 54, 30, 20);
+    _btnPantalla.frame = CGRectMake(anchoVideo - 42, 54, 34, 20);
 
-    _rueda.center = CGPointMake(ancho / 2, altoVideo / 2);
-    _lblError.frame = CGRectMake(20, altoVideo / 2 - 20, ancho - 40, 60);
-    _btnReintentar.frame = CGRectMake((ancho - 120) / 2, altoVideo / 2 + 42, 120, 30);
+    _rueda.center = CGPointMake(anchoVideo / 2, altoVideo / 2);
+    _lblError.frame = CGRectMake(20, altoVideo / 2 - 20, anchoVideo - 40, 60);
+    _btnReintentar.frame = CGRectMake((anchoVideo - 120) / 2, altoVideo / 2 + 42, 120, 30);
 
     if (_chat) {
-        BOOL visible = _chatActivo && !horizontal && !_pantallaCompleta;
-        _chat.view.hidden = !visible;
-        if (visible) {
+        BOOL visibleAbajo = _chatActivo && !horizontal && !_pantallaCompleta;
+        _chat.view.hidden = !(chatLateral || visibleAbajo);
+        if (chatLateral) {
+            _chat.view.frame = CGRectMake(anchoVideo, 0, anchoChat, alto);
+        } else if (visibleAbajo) {
             _chat.view.frame = CGRectMake(0, altoVideo, ancho, alto - altoVideo);
         }
     }
