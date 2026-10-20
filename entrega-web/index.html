@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>iTwitch - ficheros para el dispositivo</title>
+<style>
+  /* Estilo plano, pensado para la pantalla de un iPhone/iPad con iOS 9.
+     Objetivos tactiles grandes y texto legible para no fallar al tocar. */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 20px 18px 40px;
+    background: #f2f3f5;
+    color: #16181d;
+    font: 17px/1.5 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: #6b7280; font-size: 15px; margin: 0 0 22px; }
+  a.tarjeta {
+    display: block;
+    background: #ffffff;
+    border: 1px solid #e3e5e9;
+    border-left: 5px solid #9146ff;
+    border-radius: 12px;
+    padding: 18px 16px;
+    margin: 0 0 14px;
+    text-decoration: none;
+    color: inherit;
+  }
+  a.tarjeta:active { background: #f7f8fa; }
+  .paso { color: #9146ff; font-size: 13px; font-weight: 700; letter-spacing: .06em; }
+  .nombre { font-size: 19px; font-weight: 600; margin: 3px 0 4px; }
+  .detalle { color: #6b7280; font-size: 14px; }
+  .aviso {
+    background: #fff7e6;
+    border: 1px solid #f0d9a8;
+    border-radius: 10px;
+    padding: 14px 15px;
+    font-size: 14px;
+    color: #7a5a15;
+    margin-top: 22px;
+  }
+  code { background: #e6e8ec; padding: 1px 5px; border-radius: 4px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+  <h1>iTwitch</h1>
+  <p class="sub">Ficheros listos para instalar en el dispositivo. Toca en el orden 1 &rarr; 2.</p>
+
+  <a class="tarjeta" href="certificados/CertificadosModernos.mobileconfig">
+    <div class="paso">PASO 1</div>
+    <div class="nombre">Certificados modernos</div>
+    <div class="detalle">
+      Instala las ra&iacute;ces de Amazon, GlobalSign y Let's Encrypt. Sin esto, iOS 9
+      no puede abrir ninguna p&aacute;gina HTTPS de Twitch. Despu&eacute;s de tocarlo, ve a
+      <b>Ajustes &rarr; General &rarr; Perfil</b> e inst&aacute;lalo.
+    </div>
+  </a>
+
+  <a class="tarjeta" href="entrega/iTwitch.ipa">
+    <div class="paso">PASO 2</div>
+    <div class="nombre">La aplicaci&oacute;n (iTwitch.ipa)</div>
+    <div class="detalle">
+      Necesita <b>AppSync Unified</b> y un gestor de ficheros como <b>Filza</b>
+      para instalarse. Si lo descargas con Safari, &aacute;brelo despu&eacute;s desde Filza.
+    </div>
+  </a>
+
+  <div class="aviso">
+    <b>Tiene que ser por HTTP.</b> Si el navegador te muestra un error de
+    &laquo;SSL&raquo; o de &laquo;conexi&oacute;n segura&raquo;, es que ha a&ntilde;adido
+    <code>https://</code> por su cuenta: borra la barra de direcciones y escribe
+    exactamente <code>http://192.168.1.7/</code>.
+    <br><br>
+    Y recuerda: esto es <b>HTTP plano dentro de tu red</b>, por eso funciona
+    aunque el dispositivo todav&iacute;a no conf&iacute;e en ning&uacute;n certificado.
+  </div>
+
+</body>
+</html>

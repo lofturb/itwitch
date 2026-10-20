@@ -14,6 +14,21 @@ La guía de uso, instalación, certificados, inicio de sesión y límites está 
    dispositivo (ver README; sirve un servidor HTTP local para evitar el problema
    de confianza de iOS 9 con GitHub).
 2. Instala el `.ipa` del último Release con Filza/iFile y AppSync Unified.
+
+## Entregar los dos ficheros al iPad (sin cables)
+
+Igual que en Tube9: una página HTTP plana dentro de la red local, con los dos
+ficheros en orden.
+
+```powershell
+cd entrega-web
+powershell -ExecutionPolicy Bypass -File servir.ps1
+```
+
+Abre en **Safari del iPad** la dirección que imprime (`http://IP-DEL-PC/`), toca
+**PASO 1** (certificados) → *Ajustes → General → Perfil → Instalar*, y luego
+**PASO 2** (el `.ipa`) → *abrir con Filza* → *Instalar*. Detalles en
+`entrega-web/LEEME.md`.
 3. Abre la app. Para seguir canales, chat con cuenta y avisos, inicia sesión
    desde Perfil o pega el token `auth-token` en Ajustes.
 
