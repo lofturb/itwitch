@@ -724,7 +724,7 @@
             _btnVelocidad.hidden = YES;
         }
     }
-    _btnBucle.hidden = YES;
+    _btnBucle.hidden = !_esClip;
 
     [self mostrarControles:YES];
 }
@@ -1123,7 +1123,15 @@
 }
 
 - (void)reanudarSiProcede {
-    if (_esDirecto || _esClip || _reanudado) return;
+    if (_esDirecto || _reanudado) return;
+    if (_esClip) {
+        _reanudado = YES;
+        if (_posicionInicial > 1.0 && (_duracion <= 0 || _posicionInicial < _duracion - 1.0)) {
+            [_player seekToTime:CMTimeMakeWithSeconds(_posicionInicial, 600)
+              toleranceBefore:kCMTimeZero toleranceAfter:kCMTimeZero];
+        }
+        return;
+    }
     _reanudado = YES;
     if (![ITSettingsViewController reanudarVod] && _posicionInicial <= 0) return;
     NSString *clave = [self claveProgreso];

@@ -372,7 +372,11 @@ static ITMiniPlayer *gMini = nil;
         vc = [[ITPlayerViewController alloc] initWithVideo:_video];
         double actual = CMTimeGetSeconds(_player.currentTime);
         vc.posicionInicial = (isfinite(actual) && actual > 0) ? actual : _posicion;
-    } else if (_clip) vc = [[ITPlayerViewController alloc] initWithClip:_clip];
+    } else if (_clip) {
+        vc = [[ITPlayerViewController alloc] initWithClip:_clip];
+        double actual = CMTimeGetSeconds(_player.currentTime);
+        vc.posicionInicial = (isfinite(actual) && actual > 0) ? actual : _posicion;
+    }
     if (!vc) { _abriendo = NO; return; }
 
     UIViewController *raiz = [UIApplication sharedApplication].keyWindow.rootViewController;
