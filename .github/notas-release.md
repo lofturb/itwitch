@@ -32,7 +32,8 @@ por AirDrop, correo o Filza.
 - Canal con Inicio, Vídeos, Clips, Colecciones y Acerca de.
 - Reproductor propio: directo, VOD y clips, con calidad, velocidad, chat,
   pantalla completa, AirPlay, compartir y menú de opciones.
-- Chat en directo por IRC/TLS, emotes de Twitch y chat replay en VODs.
+- Chat en directo por IRC/TLS, emotes de Twitch y chat replay en VODs. En iPad
+  se muestra al lado del vídeo cuando la pantalla está en horizontal.
 - Mini reproductor flotante que reutiliza el mismo `AVPlayer`.
 - Reanudación de VOD y reproducción encadenada en colecciones.
 - Avisos locales de nuevos directos de canales seguidos.

@@ -106,7 +106,7 @@ de `UIWebView` suele ser rechazado por Twitch; usa el token manual si falla.
   10 s, pantalla completa, AirPlay, compartir, copiar enlace, abrir en Twitch y
   menú de reporte.
 - **Chat**: IRC sobre TLS, anónimo o con cuenta; emotes de Twitch y chat replay
-  en VODs.
+  en VODs. En iPad, al girar a horizontal, el chat se coloca al lado del vídeo.
 - **Mini reproductor**: sigue sonando al cerrar el reproductor, se arrastra, se
   cierra y vuelve al reproductor grande. Al minimizar se reutiliza el mismo
   `AVPlayer`, sin recargar el vídeo.
