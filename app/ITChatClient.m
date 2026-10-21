@@ -87,13 +87,15 @@
     }
 }
 
-- (void)ejecutar:(SEL)selector objeto:(id)objeto {
-    if (!_hilo) return;
-    if ([NSThread currentThread] == _hilo) {
-        [self performSelector:selector withObject:objeto];
-    } else {
-        [self performSelector:selector onThread:_hilo withObject:objeto waitUntilDone:NO];
+- (void)ejecutarEnHiloChat:(void (^)(void))bloque {
+    if (!bloque) return;
+    if (_hilo && [NSThread currentThread] == _hilo) {
+        bloque();
+        return;
     }
+    if (!_runLoopHilo) return;
+    CFRunLoopPerformBlock([_runLoopHilo getCFRunLoop], kCFRunLoopDefaultMode, bloque);
+    CFRunLoopWakeUp([_runLoopHilo getCFRunLoop]);
 }
 
 #pragma mark - API publica
@@ -101,20 +103,38 @@
 - (void)conectarCanal:(NSString *)canal {
     if (canal.length == 0) return;
     [self asegurarHilo];
-    [self ejecutar:@selector(conectarEnHilo:) objeto:[canal lowercaseString]];
+    NSString *normalizado = [canal lowercaseString];
+    __weak typeof(self) debil = self;
+    [self ejecutarEnHiloChat:^{
+        __typeof(self) fuerte = debil;
+        if (fuerte) [fuerte conectarEnHilo:normalizado];
+    }];
 }
 
 - (void)desconectar {
-    [self ejecutar:@selector(cerrarEnHilo) objeto:nil];
+    __weak typeof(self) debil = self;
+    [self ejecutarEnHiloChat:^{
+        __typeof(self) fuerte = debil;
+        if (fuerte) [fuerte cerrarEnHilo];
+    }];
 }
 
 - (void)cerrar {
-    [self ejecutar:@selector(pararEnHilo) objeto:nil];
+    __weak typeof(self) debil = self;
+    [self ejecutarEnHiloChat:^{
+        __typeof(self) fuerte = debil;
+        if (fuerte) [fuerte pararEnHilo];
+    }];
 }
 
 - (void)enviarMensaje:(NSString *)texto {
     if (texto.length == 0) return;
-    [self ejecutar:@selector(enviarMensajeEnHilo:) objeto:[texto copy]];
+    NSString *copia = [texto copy];
+    __weak typeof(self) debil = self;
+    [self ejecutarEnHiloChat:^{
+        __typeof(self) fuerte = debil;
+        if (fuerte) [fuerte enviarMensajeEnHilo:copia];
+    }];
 }
 
 #pragma mark - Conexion (siempre en el hilo del chat)
