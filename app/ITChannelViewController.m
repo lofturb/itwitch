@@ -58,14 +58,14 @@
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
+    if (!_cabecera) return;
     CGFloat ancho = self.tableView.bounds.size.width;
-    if (_cabecera) {
-        CGRect marco = _cabecera.frame;
-        marco.size.width = ancho;
-        _cabecera.frame = marco;
-        [self colocarCabecera];
-        self.tableView.tableHeaderView = _cabecera;
-    }
+    // Asignar tableHeaderView dispara otra pasada de maquetación. Si se hace
+    // en cada pasada el ciclo no termina nunca y el watchdog mata la app.
+    CGFloat actual = _cabecera.frame.size.width;
+    if (actual > ancho - 0.5 && actual < ancho + 0.5) return;
+    [self colocarCabeceraAncho:ancho];
+    self.tableView.tableHeaderView = _cabecera;
 }
 
 #pragma mark - Cabecera
@@ -137,12 +137,15 @@
     [_filtro addTarget:self action:@selector(cambiarFiltro) forControlEvents:UIControlEventValueChanged];
     [_cabecera addSubview:_filtro];
 
-    self.tableView.tableHeaderView = _cabecera;
     [self colocarCabecera];
+    self.tableView.tableHeaderView = _cabecera;
 }
 
 - (void)colocarCabecera {
-    CGFloat ancho = _cabecera.bounds.size.width;
+    [self colocarCabeceraAncho:_cabecera.bounds.size.width];
+}
+
+- (void)colocarCabeceraAncho:(CGFloat)ancho {
     CGFloat alto = _filtro.hidden ? 236.0 : 272.0;
     _cabecera.frame = CGRectMake(0, 0, ancho, alto);
     _banner.frame = CGRectMake(0, 0, ancho, 96);
