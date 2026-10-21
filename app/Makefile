@@ -38,11 +38,18 @@ iTwitch_FILES = \
 	ITChatViewController.m \
 	ITNotifications.m \
 	ITMiniPlayer.m \
+	ITDownloadManager.m \
+	ITDownloadsViewController.m \
 	ITPlayerViewController.m
 
 iTwitch_FRAMEWORKS = UIKit Foundation CoreGraphics QuartzCore AVFoundation MediaPlayer Security CFNetwork
 iTwitch_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Wno-unused-parameter
 iTwitch_RESOURCE_DIRS = Resources
 iTwitch_LDFLAGS = -Wl,-dead_strip
+
+# Entitlements: permiten escribir en /var/mobile/Media (descargas) y usar el
+# llavero (sesion de Twitch). En un dispositivo con jailbreak + AppSync, ldid
+# firma con estos permisos y el sandbox los respeta.
+iTwitch_CODESIGN_FLAGS = -Sentitlements.plist
 
 include $(THEOS_MAKE_PATH)/application.mk

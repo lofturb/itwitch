@@ -7,6 +7,7 @@
 #import "ITSettingsViewController.h"
 #import "ITImageCache.h"
 #import "ITNotifications.h"
+#import "ITDownloadsViewController.h"
 
 @implementation ITProfileViewController {
     ITChannel *_usuario;
@@ -142,7 +143,7 @@
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 2; }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return section == 0 ? 2 : 4;
+    return section == 0 ? 3 : 4;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
@@ -163,6 +164,9 @@
         if (indexPath.row == 0) {
             c.textLabel.text = @"Ajustes";
             c.imageView.image = [ITTheme icono:@"ajustes" lado:20];
+        } else if (indexPath.row == 1) {
+            c.textLabel.text = @"Descargas";
+            c.imageView.image = [ITTheme icono:@"descargar" lado:20];
         } else {
             c.textLabel.text = @"Seguidos";
             c.imageView.image = [ITTheme icono:@"canal" lado:20];
@@ -182,6 +186,9 @@
         ITSettingsViewController *vc = [[ITSettingsViewController alloc] init];
         [self.navigationController pushViewController:vc animated:YES];
     } else if (indexPath.section == 0 && indexPath.row == 1) {
+        ITDownloadsViewController *vc = [[ITDownloadsViewController alloc] init];
+        [self.navigationController pushViewController:vc animated:YES];
+    } else if (indexPath.section == 0 && indexPath.row == 2) {
         [self.tabBarController setSelectedIndex:3];
     } else if (indexPath.section == 1 && indexPath.row == 0) {
         [self informar:@"Suscripciones"

@@ -23,6 +23,11 @@ static NSString * const kITReanudar = @"itwitch_reanudar";
     return v == nil ? YES : [v boolValue];
 }
 
++ (void)guardarChatActivo:(BOOL)activo {
+    [[NSUserDefaults standardUserDefaults] setBool:activo forKey:kITChat];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
 + (BOOL)reanudarVod {
     id v = [[NSUserDefaults standardUserDefaults] objectForKey:kITReanudar];
     return v == nil ? YES : [v boolValue];

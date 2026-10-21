@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Identidad de la app. Sin esto el llavero devuelve -34018 y la sesion
+	     de Twitch no se puede guardar. -->
+	<key>application-identifier</key>
+	<string>com.lofturb.itwitch</string>
+	<key>com.apple.developer.team-identifier</key>
+	<string>com.lofturb</string>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>com.lofturb.itwitch</string>
+	</array>
+
+	<!-- App de jailbreak: sin sandbox y con acceso a las carpetas del usuario. -->
+	<key>platform-application</key>
+	<true/>
+	<key>com.apple.private.security.no-sandbox</key>
+	<true/>
+	<key>com.apple.security.exception.files.absolute-path.read-write</key>
+	<array>
+		<string>/var/mobile/Media/</string>
+		<string>/private/var/mobile/Media/</string>
+		<string>/var/mobile/Documents/</string>
+	</array>
+	<key>get-task-allow</key>
+	<true/>
+</dict>
+</plist>

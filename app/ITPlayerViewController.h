@@ -8,4 +8,6 @@
 - (instancetype)initWithStream:(ITStream *)stream;
 - (instancetype)initWithVideo:(ITVideo *)video;
 - (instancetype)initWithClip:(ITClip *)clip;
+// Reproduce un archivo ya descargado (mp4, mov o ts) de la carpeta local.
+- (instancetype)initWithArchivo:(NSString *)ruta titulo:(NSString *)titulo;
 @end

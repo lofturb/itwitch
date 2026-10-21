@@ -9,8 +9,118 @@
 #import "ITSettingsViewController.h"
 #import "ITChatViewController.h"
 #import "ITMiniPlayer.h"
+#import "ITDownloadManager.h"
+#import "ITDownloadsViewController.h"
+
+// Boton del reproductor con icono (o texto) y una etiqueta debajo. En un A5
+// los botones pelados se perdian entre el video; con el pie se entiende que
+// hace cada uno.
+@interface ITBotonControl : UIButton
+@property (nonatomic, strong) UIImageView *icono;
+@property (nonatomic, strong) UILabel *titulo;
+@property (nonatomic, strong) UILabel *pie;
+- (void)usarIcono:(NSString *)forma;
+- (void)usarTexto:(NSString *)texto;
+- (void)ponerPie:(NSString *)texto;
+- (void)destacar:(BOOL)destacar;
+@end
+
+@implementation ITBotonControl
+
+- (instancetype)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (self) {
+        _icono = [[UIImageView alloc] init];
+        _icono.contentMode = UIViewContentModeScaleAspectFit;
+        _icono.tintColor = [UIColor whiteColor];
+        _icono.userInteractionEnabled = NO;
+        [self addSubview:_icono];
+
+        _titulo = [[UILabel alloc] init];
+        _titulo.font = [UIFont systemFontOfSize:10.0 weight:UIFontWeightSemibold];
+        _titulo.textColor = [UIColor whiteColor];
+        _titulo.textAlignment = NSTextAlignmentCenter;
+        _titulo.userInteractionEnabled = NO;
+        [self addSubview:_titulo];
+
+        _pie = [[UILabel alloc] init];
+        _pie.font = [UIFont systemFontOfSize:8.5 weight:UIFontWeightMedium];
+        _pie.textColor = [UIColor colorWithWhite:1.0 alpha:0.62];
+        _pie.textAlignment = NSTextAlignmentCenter;
+        _pie.userInteractionEnabled = NO;
+        [self addSubview:_pie];
+    }
+    return self;
+}
+
+- (void)usarIcono:(NSString *)forma {
+    UIImage *imagen = [ITTheme icono:forma lado:19];
+    self.icono.image = [imagen imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    self.icono.hidden = NO;
+    self.titulo.text = @"";
+    self.titulo.hidden = YES;
+    [self setNeedsLayout];
+}
+
+- (void)usarTexto:(NSString *)texto {
+    self.icono.image = nil;
+    self.icono.hidden = YES;
+    self.titulo.text = texto;
+    self.titulo.hidden = NO;
+    [self setNeedsLayout];
+}
+
+- (void)ponerPie:(NSString *)texto {
+    self.pie.text = texto;
+}
+
+- (void)destacar:(BOOL)destacar {
+    UIColor *color = destacar ? [ITTheme acento] : [UIColor whiteColor];
+    self.icono.tintColor = color;
+    self.titulo.textColor = color;
+    self.pie.textColor = destacar ? [ITTheme acento]
+                                  : [UIColor colorWithWhite:1.0 alpha:0.62];
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    CGFloat ancho = self.bounds.size.width;
+    CGFloat alto = self.bounds.size.height;
+    BOOL conIcono = !self.icono.hidden;
+
+    if (conIcono) {
+        CGFloat lado = 20.0;
+        self.icono.frame = CGRectMake((ancho - lado) / 2.0, 5.0, lado, lado);
+        self.titulo.frame = CGRectMake(0, 26.0, ancho, 12.0);
+        self.pie.frame = CGRectMake(0, 37.0, ancho, 10.0);
+    } else {
+        self.titulo.frame = CGRectMake(0, 9.0, ancho, 16.0);
+        self.pie.frame = CGRectMake(0, 25.0, ancho, 10.0);
+    }
+    (void)alto;
+}
+
+@end
+
+// Contenedor de los controles: deja pasar los toques del fondo al video para
+// que los gestos (toque para mostrar, arrastre para buscar) sigan funcionando
+// aunque la capa de controles este visible.
+@interface ITControlesView : UIView
+@end
+
+@implementation ITControlesView
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    UIView *vista = [super hitTest:point withEvent:event];
+    return (vista == self) ? nil : vista;
+}
+@end
 
 @interface ITPlayerViewController () <UIGestureRecognizerDelegate>
+- (float)velocidadElegida;
+- (void)avisar:(NSString *)texto;
+- (void)crearAviso;
+- (void)descargarVideo;
+- (void)abrirDescargas;
 @end
 
 @implementation ITPlayerViewController {
@@ -48,11 +158,12 @@
     UIButton *_btnAdelante10;
     UIButton *_btnCompartir;
     UIButton *_btnMas;
-    UIButton *_btnCalidad;
-    UIButton *_btnVelocidad;
-    UIButton *_btnChat;
-    UIButton *_btnPantalla;
-    UIButton *_btnBucle;
+    ITBotonControl *_btnCalidad;
+    ITBotonControl *_btnVelocidad;
+    ITBotonControl *_btnChat;
+    ITBotonControl *_btnPantalla;
+    ITBotonControl *_btnBucle;
+    ITBotonControl *_btnDescargar;
     UIButton *_btnIrDirecto;
     UIButton *_btnReintentar;
     UISlider *_slider;
@@ -61,8 +172,11 @@
     UILabel *_lblTitulo;
     UILabel *_lblDirecto;
     UILabel *_lblError;
+    UILabel *_lblAviso;
     UIActivityIndicatorView *_rueda;
     NSTimer *_timerOcultar;
+    NSTimer *_temporizadorSueno;
+    NSTimer *_temporizadorAviso;
 
     NSArray *_variantes;
     NSDictionary *_varianteActual;
@@ -75,6 +189,8 @@
     ITChatViewController *_chat;
     UIView *_cajaChat;
     BOOL _chatCargado;
+    NSString *_rutaLocal;
+    NSString *_tituloLocal;
 }
 
 #pragma mark - Init
@@ -105,6 +221,15 @@
     return self;
 }
 
+- (instancetype)initWithArchivo:(NSString *)ruta titulo:(NSString *)titulo {
+    self = [super initWithNibName:nil bundle:nil];
+    if (self) {
+        _rutaLocal = [ruta copy];
+        _tituloLocal = [titulo copy];
+    }
+    return self;
+}
+
 #pragma mark - Ciclo
 
 - (BOOL)prefersStatusBarHidden { return YES; }
@@ -122,14 +247,16 @@
     _capa.videoGravity = AVLayerVideoGravityResizeAspect;
     [_vistaVideo.layer addSublayer:_capa];
 
+    [self montarControles];
+
     _rueda = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
-    [_vistaVideo addSubview:_rueda];
+    [self.view addSubview:_rueda];
 
     _lblError = ITLabel(@"", [ITTheme fuenteCuerpo], [UIColor whiteColor]);
     _lblError.textAlignment = NSTextAlignmentCenter;
     _lblError.numberOfLines = 3;
     _lblError.hidden = YES;
-    [_vistaVideo addSubview:_lblError];
+    [self.view addSubview:_lblError];
 
     _btnReintentar = [UIButton buttonWithType:UIButtonTypeSystem];
     [_btnReintentar setTitle:@"Reintentar" forState:UIControlStateNormal];
@@ -139,13 +266,12 @@
     ITRedondear(_btnReintentar, 14.0);
     _btnReintentar.hidden = YES;
     [_btnReintentar addTarget:self action:@selector(reintentar) forControlEvents:UIControlEventTouchUpInside];
-    [_vistaVideo addSubview:_btnReintentar];
+    [self.view addSubview:_btnReintentar];
 
-    [self montarControles];
     [self prepararGestos];
     [self prepararAudio];
 
-    _chatActivo = [ITSettingsViewController chatActivo] && !_esClip;
+    _chatActivo = [ITSettingsViewController chatActivo] && !_esClip && _rutaLocal.length == 0;
     if (_chatActivo) [self crearChat];
     _reproducirAlCargar = YES;
     [self cargar];
@@ -196,56 +322,92 @@
     CGFloat alto = self.view.bounds.size.height;
     BOOL horizontal = ancho > alto;
 
-    // En iPad en horizontal el chat cabe al lado del vídeo. En un iPhone
-    // el vídeo quedaría demasiado estrecho, así que se mantiene el chat
-    // inferior del modo vertical.
-    BOOL chatLateral = (_chat != nil && _chatActivo && horizontal && ancho >= 640.0);
-    CGFloat anchoChat = chatLateral ? MIN(320.0, MAX(240.0, ancho * 0.34)) : 0.0;
+    // El video ocupa toda la pantalla. Si el chat esta visible, se le reserva
+    // un panel a la derecha (iPad horizontal) o abajo (vertical).
+    BOOL chatVisible = (_chat != nil && _chatActivo);
+    BOOL chatLateral = chatVisible && horizontal && ancho >= 640.0;
+    CGFloat anchoChat = chatLateral ? MIN(320.0, MAX(250.0, ancho * 0.34)) : 0.0;
+    CGFloat altoChat = (chatVisible && !chatLateral) ? MIN(alto * 0.42, 380.0) : 0.0;
     CGFloat anchoVideo = ancho - anchoChat;
+    CGFloat altoVideo = alto - altoChat;
 
-    CGFloat altoVideo = (horizontal || _pantallaCompleta) ? alto : MIN(ancho * 9.0 / 16.0, alto * 0.64);
     _vistaVideo.frame = CGRectMake(0, 0, anchoVideo, altoVideo);
     _capa.frame = _vistaVideo.bounds;
 
-    _controles.frame = _vistaVideo.bounds;
+    _controles.frame = self.view.bounds;
     _barraSuperior.frame = CGRectMake(0, 0, anchoVideo, 44);
-    _barraInferior.frame = CGRectMake(0, altoVideo - 78, anchoVideo, 78);
+    _barraInferior.frame = CGRectMake(0, altoVideo - 100, anchoVideo, 100);
 
-    _btnAtras.frame = CGRectMake(2, 2, 40, 40);
-    _lblTitulo.frame = CGRectMake(46, 2, anchoVideo - 178, 40);
-    _ruta.frame = CGRectMake(anchoVideo - 128, 2, 40, 40);
-    _btnMas.frame = CGRectMake(anchoVideo - 88, 2, 40, 40);
-    _btnCompartir.frame = CGRectMake(anchoVideo - 46, 2, 40, 40);
-
-    _btnPlay.frame = CGRectMake((anchoVideo - 56) / 2, (altoVideo - 56) / 2, 56, 56);
-    _btnAtras10.frame = CGRectMake((anchoVideo - 56) / 2 - 76, (altoVideo - 42) / 2, 50, 42);
-    _btnAdelante10.frame = CGRectMake((anchoVideo - 56) / 2 + 82, (altoVideo - 42) / 2, 50, 42);
+    _btnAtras.frame = CGRectMake(2, 2, 42, 40);
+    _btnMas.frame = CGRectMake(anchoVideo - 44, 2, 40, 40);
+    _btnCompartir.frame = CGRectMake(anchoVideo - 84, 2, 40, 40);
+    _ruta.frame = CGRectMake(anchoVideo - 128, 2, 42, 40);
+    _lblTitulo.frame = CGRectMake(48, 2, MAX(40, anchoVideo - 180), 40);
 
     _slider.frame = CGRectMake(14, 8, anchoVideo - 28, 22);
-    _lblTiempo.frame = CGRectMake(14, 38, 60, 16);
-    _lblDuracion.frame = CGRectMake(anchoVideo - 74, 38, 60, 16);
-    _lblDirecto.frame = CGRectMake(14, 38, 100, 16);
-    _btnIrDirecto.frame = CGRectMake(anchoVideo - 110, 36, 96, 18);
+    _lblTiempo.frame = CGRectMake(14, 32, 70, 14);
+    _lblDuracion.frame = CGRectMake(anchoVideo - 84, 32, 70, 14);
+    _lblDirecto.frame = CGRectMake(14, 34, 120, 14);
+    _btnIrDirecto.frame = CGRectMake(anchoVideo - 118, 30, 104, 22);
 
-    _btnCalidad.frame = CGRectMake(76, 54, 46, 20);
-    _btnVelocidad.frame = CGRectMake(124, 54, 36, 20);
-    _btnBucle.frame = CGRectMake(162, 54, 30, 20);
-    _btnChat.frame = CGRectMake(anchoVideo - 96, 54, 30, 20);
-    _btnPantalla.frame = CGRectMake(anchoVideo - 42, 54, 34, 20);
+    BOOL compacto = anchoVideo < 500.0;
+
+    // Visibilidad segun el tipo de contenido y el ancho. En un iPhone los
+    // botones secundarios viven en el menu ⋯ para que no se solapen.
+    _btnAtras10.hidden = _esDirecto;
+    _btnAdelante10.hidden = _esDirecto;
+    _slider.hidden = _esDirecto;
+    _lblTiempo.hidden = _esDirecto;
+    _lblDuracion.hidden = _esDirecto;
+    _lblDirecto.hidden = !_esDirecto;
+    _btnIrDirecto.hidden = !_esDirecto;
+    _btnChat.hidden = (_esClip || _rutaLocal.length > 0);
+    if (compacto) {
+        _btnDescargar.hidden = YES;
+        _btnVelocidad.hidden = YES;
+        _btnBucle.hidden = YES;
+    } else {
+        _btnDescargar.hidden = (_esDirecto || _esClip || _rutaLocal.length > 0);
+        _btnVelocidad.hidden = (_esDirecto || _esClip);
+        _btnBucle.hidden = !_esClip;
+    }
+
+    CGFloat y = 50.0;
+    _btnAtras10.frame = CGRectMake(8, y, 44, 46);
+    _btnPlay.frame = CGRectMake(54, y - 4, 52, 54);
+    _btnAdelante10.frame = CGRectMake(108, y, 44, 46);
+
+    CGFloat anchoBoton = compacto ? 44.0 : 62.0;
+    CGFloat x = anchoVideo - 8.0;
+    NSArray *derecha = @[ _btnPantalla, _btnChat, _btnDescargar, _btnVelocidad,
+                          _btnCalidad, _btnBucle ];
+    for (UIView *boton in derecha) {
+        if (boton.hidden) continue;
+        x -= anchoBoton;
+        boton.frame = CGRectMake(x, y, anchoBoton, 46);
+    }
 
     _rueda.center = CGPointMake(anchoVideo / 2, altoVideo / 2);
     _lblError.frame = CGRectMake(20, altoVideo / 2 - 20, anchoVideo - 40, 60);
     _btnReintentar.frame = CGRectMake((anchoVideo - 120) / 2, altoVideo / 2 + 42, 120, 30);
 
+    _lblAviso.frame = CGRectMake(MAX(14, (anchoVideo - 360) / 2), 54,
+                                 MIN(360, anchoVideo - 28), 32);
+
     if (_chat) {
-        BOOL visibleAbajo = _chatActivo && !horizontal && !_pantallaCompleta;
-        _chat.view.hidden = !(chatLateral || visibleAbajo);
+        _chat.view.hidden = !chatVisible;
         if (chatLateral) {
             _chat.view.frame = CGRectMake(anchoVideo, 0, anchoChat, alto);
-        } else if (visibleAbajo) {
-            _chat.view.frame = CGRectMake(0, altoVideo, ancho, alto - altoVideo);
+        } else if (chatVisible) {
+            _chat.view.frame = CGRectMake(0, altoVideo, ancho, altoChat);
         }
     }
+
+    // El chat va por encima de los controles para poder escribir en el, pero
+    // las barras no lo invaden porque su ancho es el del video.
+    [self.view bringSubviewToFront:_controles];
+    if (chatVisible) [self.view bringSubviewToFront:_chat.view];
+    [self.view bringSubviewToFront:_lblAviso];
 }
 
 - (void)dealloc {
@@ -255,6 +417,8 @@
     if (_observadorEstado) [_item removeObserver:self forKeyPath:@"status"];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [_timerOcultar invalidate];
+    [_temporizadorSueno invalidate];
+    [_temporizadorAviso invalidate];
 }
 
 #pragma mark - Carga
@@ -266,6 +430,11 @@
     _btnReintentar.hidden = YES;
 
     __typeof(self) debil = self;
+    if (_rutaLocal.length) {
+        NSLog(@"[iTwitch] abriendo archivo local %@", _rutaLocal);
+        [self prepararURL:[[NSURL fileURLWithPath:_rutaLocal] absoluteString]];
+        return;
+    }
     if (_esClip) {
         [self cargarClip];
         return;
@@ -340,7 +509,7 @@
     }
     _variantes = variantes;
     _varianteActual = nil;
-    [_btnCalidad setTitle:@"Auto" forState:UIControlStateNormal];
+    [_btnCalidad usarTexto:@"Auto"];
 
     NSDictionary *elegida = [self mejorCalidadDe:variantes];
     if (!elegida) {
@@ -436,7 +605,7 @@
 
 - (void)mostrarCargando:(BOOL)cargando {
     if (cargando) {
-        [_vistaVideo bringSubviewToFront:_rueda];
+        [self.view bringSubviewToFront:_rueda];
         [_rueda startAnimating];
     } else {
         [_rueda stopAnimating];
@@ -450,8 +619,8 @@
     _lblError.text = texto ?: @"Error de reproducción.";
     _lblError.hidden = NO;
     _btnReintentar.hidden = NO;
-    [_vistaVideo bringSubviewToFront:_lblError];
-    [_vistaVideo bringSubviewToFront:_btnReintentar];
+    [self.view bringSubviewToFront:_lblError];
+    [self.view bringSubviewToFront:_btnReintentar];
     [_player pause];
 }
 
@@ -509,6 +678,11 @@
 
 - (void)reproducir {
     [_player play];
+    if (!_esDirecto) {
+        float velocidad = [self velocidadElegida];
+        if (velocidad != 1.0f) _player.rate = velocidad;
+        [_btnVelocidad usarTexto:[NSString stringWithFormat:@"%.2g×", velocidad]];
+    }
     _iniciado = YES;
     [self actualizarBotonPlay];
     [self programarOcultar];
@@ -623,7 +797,7 @@
     }
 
     if (_player.rate > 0 && _controlesVisibles &&
-        [NSDate timeIntervalSinceReferenceDate] - _ultimoToque > 3.5) {
+        [NSDate timeIntervalSinceReferenceDate] - _ultimoToque > 5.0) {
         [self mostrarControles:NO];
     }
 }
@@ -650,9 +824,9 @@
 #pragma mark - Controles
 
 - (void)montarControles {
-    _controles = [[UIView alloc] init];
+    _controles = [[ITControlesView alloc] init];
     _controles.backgroundColor = [UIColor clearColor];
-    [_vistaVideo addSubview:_controles];
+    [self.view addSubview:_controles];
 
     _barraSuperior = [[UIView alloc] init];
     _barraSuperior.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.55];
@@ -691,17 +865,17 @@
 
     _btnPlay = [UIButton buttonWithType:UIButtonTypeSystem];
     _btnPlay.tintColor = [UIColor whiteColor];
-    [_btnPlay setImage:[ITTheme icono:@"reproducir" lado:34] forState:UIControlStateNormal];
+    [_btnPlay setImage:[ITTheme icono:@"reproducir" lado:32] forState:UIControlStateNormal];
     [_btnPlay addTarget:self action:@selector(alternarReproduccion) forControlEvents:UIControlEventTouchUpInside];
-    [_controles addSubview:_btnPlay];
+    [_barraInferior addSubview:_btnPlay];
 
-    _btnAtras10 = ITBotonIcono(@"atras10", 30, [UIColor whiteColor]);
+    _btnAtras10 = ITBotonIcono(@"atras10", 28, [UIColor whiteColor]);
     [_btnAtras10 addTarget:self action:@selector(atrasDiez) forControlEvents:UIControlEventTouchUpInside];
-    [_controles addSubview:_btnAtras10];
+    [_barraInferior addSubview:_btnAtras10];
 
-    _btnAdelante10 = ITBotonIcono(@"adelante10", 30, [UIColor whiteColor]);
+    _btnAdelante10 = ITBotonIcono(@"adelante10", 28, [UIColor whiteColor]);
     [_btnAdelante10 addTarget:self action:@selector(adelanteDiez) forControlEvents:UIControlEventTouchUpInside];
-    [_controles addSubview:_btnAdelante10];
+    [_barraInferior addSubview:_btnAdelante10];
 
     _slider = [[UISlider alloc] init];
     _slider.minimumTrackTintColor = [ITTheme acento];
@@ -730,29 +904,39 @@
     [_btnIrDirecto addTarget:self action:@selector(irAlDirecto) forControlEvents:UIControlEventTouchUpInside];
     [_barraInferior addSubview:_btnIrDirecto];
 
-    _btnCalidad = [UIButton buttonWithType:UIButtonTypeSystem];
-    [_btnCalidad setTitle:@"Auto" forState:UIControlStateNormal];
-    [_btnCalidad setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    _btnCalidad.titleLabel.font = [UIFont systemFontOfSize:10.0 weight:UIFontWeightSemibold];
+    _btnCalidad = [[ITBotonControl alloc] initWithFrame:CGRectZero];
+    [_btnCalidad usarTexto:@"Auto"];
+    [_btnCalidad ponerPie:@"Calidad"];
     [_btnCalidad addTarget:self action:@selector(elegirCalidad) forControlEvents:UIControlEventTouchUpInside];
     [_barraInferior addSubview:_btnCalidad];
 
-    _btnVelocidad = [UIButton buttonWithType:UIButtonTypeSystem];
-    [_btnVelocidad setTitle:@"1×" forState:UIControlStateNormal];
-    [_btnVelocidad setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    _btnVelocidad.titleLabel.font = [UIFont systemFontOfSize:10.0 weight:UIFontWeightSemibold];
+    _btnVelocidad = [[ITBotonControl alloc] initWithFrame:CGRectZero];
+    [_btnVelocidad usarTexto:@"1×"];
+    [_btnVelocidad ponerPie:@"Velocidad"];
     [_btnVelocidad addTarget:self action:@selector(elegirVelocidad) forControlEvents:UIControlEventTouchUpInside];
     [_barraInferior addSubview:_btnVelocidad];
 
-    _btnBucle = ITBotonIcono(@"bucle", 16, [UIColor whiteColor]);
+    _btnBucle = [[ITBotonControl alloc] initWithFrame:CGRectZero];
+    [_btnBucle usarIcono:@"bucle"];
+    [_btnBucle ponerPie:@"Bucle"];
     [_btnBucle addTarget:self action:@selector(alternarBucle) forControlEvents:UIControlEventTouchUpInside];
     [_barraInferior addSubview:_btnBucle];
 
-    _btnChat = ITBotonIcono(@"chat", 18, [UIColor whiteColor]);
+    _btnChat = [[ITBotonControl alloc] initWithFrame:CGRectZero];
+    [_btnChat usarIcono:@"chat"];
+    [_btnChat ponerPie:@"Chat"];
     [_btnChat addTarget:self action:@selector(alternarChat) forControlEvents:UIControlEventTouchUpInside];
     [_barraInferior addSubview:_btnChat];
 
-    _btnPantalla = ITBotonIcono(@"pantalla", 18, [UIColor whiteColor]);
+    _btnDescargar = [[ITBotonControl alloc] initWithFrame:CGRectZero];
+    [_btnDescargar usarIcono:@"descargar"];
+    [_btnDescargar ponerPie:@"Bajar"];
+    [_btnDescargar addTarget:self action:@selector(descargarVideo) forControlEvents:UIControlEventTouchUpInside];
+    [_barraInferior addSubview:_btnDescargar];
+
+    _btnPantalla = [[ITBotonControl alloc] initWithFrame:CGRectZero];
+    [_btnPantalla usarIcono:@"pantalla"];
+    [_btnPantalla ponerPie:@"Pantalla"];
     [_btnPantalla addTarget:self action:@selector(alternarPantalla) forControlEvents:UIControlEventTouchUpInside];
     [_barraInferior addSubview:_btnPantalla];
 
@@ -764,19 +948,40 @@
         _btnBucle.hidden = YES;
         _btnAtras10.hidden = YES;
         _btnAdelante10.hidden = YES;
+        _btnDescargar.hidden = YES;
         _lblDirecto.hidden = NO;
         _btnIrDirecto.hidden = NO;
     } else {
         _lblDirecto.hidden = YES;
         _btnIrDirecto.hidden = YES;
+        _btnBucle.hidden = !_esClip;
         if (_esClip) {
             _btnChat.hidden = YES;
             _btnVelocidad.hidden = YES;
+            _btnDescargar.hidden = YES;
+        }
+        if (_rutaLocal.length) {
+            _btnChat.hidden = YES;
+            _btnDescargar.hidden = YES;
         }
     }
-    _btnBucle.hidden = !_esClip;
+    [_btnChat destacar:_chatActivo];
+    [_btnBucle destacar:NO];
 
+    [self crearAviso];
     [self mostrarControles:YES];
+}
+
+- (void)crearAviso {
+    _lblAviso = ITLabel(@"", [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold],
+                        [UIColor whiteColor]);
+    _lblAviso.textAlignment = NSTextAlignmentCenter;
+    _lblAviso.numberOfLines = 2;
+    _lblAviso.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.78];
+    _lblAviso.hidden = YES;
+    _lblAviso.userInteractionEnabled = NO;
+    ITRedondear(_lblAviso, 8.0);
+    [self.view addSubview:_lblAviso];
 }
 
 - (void)mostrarControles:(BOOL)mostrar {
@@ -794,7 +999,7 @@
     [_timerOcultar invalidate];
     if (_player.rate == 0) return;
     __typeof(self) debil = self;
-    _timerOcultar = [NSTimer scheduledTimerWithTimeInterval:3.6 target:debil
+    _timerOcultar = [NSTimer scheduledTimerWithTimeInterval:5.0 target:debil
                                                    selector:@selector(ocultarPorTimer)
                                                    userInfo:nil repeats:NO];
 }
@@ -818,13 +1023,14 @@
 
 - (void)alternarBucle {
     _bucle = !_bucle;
-    _btnBucle.tintColor = _bucle ? [ITTheme acento] : [UIColor whiteColor];
+    [_btnBucle destacar:_bucle];
+    [self avisar:_bucle ? @"Bucle activado" : @"Bucle desactivado"];
 }
 
 - (void)alternarPantalla {
     _pantallaCompleta = !_pantallaCompleta;
-    [_btnPantalla setImage:[ITTheme icono:(_pantallaCompleta ? @"encoger" : @"pantalla") lado:18]
-                  forState:UIControlStateNormal];
+    [_btnPantalla usarIcono:(_pantallaCompleta ? @"encoger" : @"pantalla")];
+    [_btnPantalla ponerPie:(_pantallaCompleta ? @"Normal" : @"Pantalla")];
     UIInterfaceOrientation orientacion = _pantallaCompleta
         ? UIInterfaceOrientationLandscapeRight : UIInterfaceOrientationPortrait;
     [[UIApplication sharedApplication] setStatusBarOrientation:orientacion animated:YES];
@@ -858,6 +1064,7 @@
 }
 
 - (NSURL *)enlaceActual {
+    if (_rutaLocal.length) return [NSURL fileURLWithPath:_rutaLocal];
     if (_stream) return [NSURL URLWithString:[NSString stringWithFormat:@"https://www.twitch.tv/%@", _stream.login]];
     if (_video) return [NSURL URLWithString:[NSString stringWithFormat:@"https://www.twitch.tv/videos/%@", _video.identificador]];
     if (_clip) return [NSURL URLWithString:[NSString stringWithFormat:@"https://clips.twitch.tv/%@", _clip.slug]];
@@ -867,18 +1074,41 @@
 - (void)mostrarMas {
     UIAlertController *a = [UIAlertController alertControllerWithTitle:nil
         message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+
+    if (!_esDirecto && !_esClip) {
+        [a addAction:[UIAlertAction actionWithTitle:@"Descargar vídeo" style:UIAlertActionStyleDefault
+            handler:^(UIAlertAction *accion) { [self descargarVideo]; }]];
+    }
+    if (!_esDirecto) {
+        [a addAction:[UIAlertAction actionWithTitle:@"Velocidad" style:UIAlertActionStyleDefault
+            handler:^(UIAlertAction *accion) { [self elegirVelocidad]; }]];
+    }
+    [a addAction:[UIAlertAction actionWithTitle:@"Calidad" style:UIAlertActionStyleDefault
+        handler:^(UIAlertAction *accion) { [self elegirCalidad]; }]];
+    [a addAction:[UIAlertAction actionWithTitle:@"Temporizador" style:UIAlertActionStyleDefault
+        handler:^(UIAlertAction *accion) { [self elegirTemporizador]; }]];
+    if (!_esDirecto && !_esClip) {
+        [a addAction:[UIAlertAction actionWithTitle:@"Copiar enlace en este minuto"
+            style:UIAlertActionStyleDefault
+            handler:^(UIAlertAction *accion) { [self copiarEnlaceEnMinuto]; }]];
+    }
     [a addAction:[UIAlertAction actionWithTitle:@"Compartir" style:UIAlertActionStyleDefault
         handler:^(UIAlertAction *accion) { [self compartir]; }]];
     [a addAction:[UIAlertAction actionWithTitle:@"Copiar enlace" style:UIAlertActionStyleDefault
         handler:^(UIAlertAction *accion) {
         NSURL *url = [self enlaceActual];
         if (url) [UIPasteboard generalPasteboard].string = url.absoluteString;
+        [self avisar:@"Enlace copiado"];
     }]];
-    [a addAction:[UIAlertAction actionWithTitle:@"Abrir en Twitch" style:UIAlertActionStyleDefault
-        handler:^(UIAlertAction *accion) {
-        NSURL *url = [self enlaceActual];
-        if (url) [[UIApplication sharedApplication] openURL:url];
-    }]];
+    [a addAction:[UIAlertAction actionWithTitle:@"Ver descargas" style:UIAlertActionStyleDefault
+        handler:^(UIAlertAction *accion) { [self abrirDescargas]; }]];
+    if (!_esDirecto) {
+        [a addAction:[UIAlertAction actionWithTitle:@"Abrir en Twitch" style:UIAlertActionStyleDefault
+            handler:^(UIAlertAction *accion) {
+            NSURL *url = [self enlaceActual];
+            if (url) [[UIApplication sharedApplication] openURL:url];
+        }]];
+    }
     [a addAction:[UIAlertAction actionWithTitle:@"Reportar un problema" style:UIAlertActionStyleDefault
         handler:^(UIAlertAction *accion) {
         NSURL *url = [NSURL URLWithString:@"https://github.com/lofturb/itwitch/issues"];
@@ -886,6 +1116,140 @@
     }]];
     [a addAction:[UIAlertAction actionWithTitle:@"Cancelar" style:UIAlertActionStyleCancel handler:nil]];
     [self presentarAccion:a];
+}
+
+- (void)abrirDescargas {
+    ITDownloadsViewController *vc = [[ITDownloadsViewController alloc] init];
+    [self.navigationController pushViewController:vc animated:YES];
+}
+
+- (void)copiarEnlaceEnMinuto {
+    NSURL *url = [self enlaceActual];
+    if (!url) return;
+    int total = (int)MAX(0, CMTimeGetSeconds(_player.currentTime));
+    NSString *marca = [NSString stringWithFormat:@"%dh%dm%ds",
+                       total / 3600, (total % 3600) / 60, total % 60];
+    NSString *texto = [NSString stringWithFormat:@"%@?t=%@", url.absoluteString, marca];
+    [UIPasteboard generalPasteboard].string = texto;
+    [self avisar:@"Enlace copiado en este minuto"];
+}
+
+#pragma mark - Temporizador
+
+- (void)elegirTemporizador {
+    UIAlertController *a = [UIAlertController alertControllerWithTitle:@"Temporizador"
+        message:@"La reproducción se pausará al terminar el tiempo."
+        preferredStyle:UIAlertControllerStyleActionSheet];
+    for (NSNumber *minutos in @[@15, @30, @60, @90]) {
+        NSString *titulo = [NSString stringWithFormat:@"%@ minutos", minutos];
+        [a addAction:[UIAlertAction actionWithTitle:titulo style:UIAlertActionStyleDefault
+            handler:^(UIAlertAction *accion) {
+            [self programarSueno:minutos.doubleValue * 60.0];
+        }]];
+    }
+    [a addAction:[UIAlertAction actionWithTitle:@"Desactivar" style:UIAlertActionStyleDefault
+        handler:^(UIAlertAction *accion) {
+        [self->_temporizadorSueno invalidate];
+        self->_temporizadorSueno = nil;
+        [self avisar:@"Temporizador desactivado"];
+    }]];
+    [a addAction:[UIAlertAction actionWithTitle:@"Cancelar" style:UIAlertActionStyleCancel handler:nil]];
+    [self presentarAccion:a];
+}
+
+- (void)programarSueno:(NSTimeInterval)segundos {
+    [_temporizadorSueno invalidate];
+    _temporizadorSueno = [NSTimer scheduledTimerWithTimeInterval:segundos
+                                                          target:self
+                                                        selector:@selector(sonarSueno:)
+                                                        userInfo:nil
+                                                         repeats:NO];
+    [self avisar:[NSString stringWithFormat:@"Se pausará en %d min", (int)(segundos / 60.0)]];
+}
+
+- (void)sonarSueno:(NSTimer *)temporizador {
+    _temporizadorSueno = nil;
+    [self pausar];
+    [self avisar:@"Temporizador: reproducción pausada"];
+}
+
+#pragma mark - Avisos
+
+- (void)avisar:(NSString *)texto {
+    if (!_lblAviso) return;
+    _lblAviso.text = texto;
+    _lblAviso.hidden = NO;
+    _lblAviso.alpha = 1.0;
+    [self.view bringSubviewToFront:_lblAviso];
+    [_temporizadorAviso invalidate];
+    _temporizadorAviso = [NSTimer scheduledTimerWithTimeInterval:2.4
+                                                          target:self
+                                                        selector:@selector(ocultarAviso:)
+                                                        userInfo:nil
+                                                         repeats:NO];
+}
+
+- (void)ocultarAviso:(NSTimer *)temporizador {
+    _temporizadorAviso = nil;
+    [UIView animateWithDuration:0.25 animations:^{
+        self->_lblAviso.alpha = 0.0;
+    } completion:^(BOOL terminado) {
+        self->_lblAviso.hidden = YES;
+    }];
+}
+
+#pragma mark - Descargas
+
+- (void)descargarVideo {
+    if (_esDirecto || _esClip || _rutaLocal.length) {
+        [self avisar:@"Solo se pueden descargar VODs"];
+        return;
+    }
+    NSMutableArray *nombres = [NSMutableArray array];
+    for (NSDictionary *v in _variantes) {
+        NSString *nombre = v[@"nombre"];
+        if (nombre.length && ![nombres containsObject:nombre]) [nombres addObject:nombre];
+    }
+
+    UIAlertController *a = [UIAlertController alertControllerWithTitle:@"Descargar vídeo"
+        message:@"Elige la calidad. La descarga sigue aunque cierres el reproductor."
+        preferredStyle:UIAlertControllerStyleActionSheet];
+    [a addAction:[UIAlertAction actionWithTitle:@"Auto (mejor hasta 720p)"
+        style:UIAlertActionStyleDefault
+        handler:^(UIAlertAction *accion) { [self pedirCarpetaParaCalidad:@"Auto"]; }]];
+    for (NSString *nombre in nombres) {
+        [a addAction:[UIAlertAction actionWithTitle:nombre style:UIAlertActionStyleDefault
+            handler:^(UIAlertAction *accion) { [self pedirCarpetaParaCalidad:nombre]; }]];
+    }
+    [a addAction:[UIAlertAction actionWithTitle:@"Cancelar" style:UIAlertActionStyleCancel handler:nil]];
+    [self presentarAccion:a];
+}
+
+- (void)pedirCarpetaParaCalidad:(NSString *)calidad {
+    NSString *carpeta = [ITDownloadManager carpetaDeDescargas];
+    UIAlertController *a = [UIAlertController alertControllerWithTitle:@"Carpeta de destino"
+        message:@"Ruta donde se guardará el vídeo. Por defecto: /var/mobile/Media/iTwitch"
+        preferredStyle:UIAlertControllerStyleAlert];
+    [a addTextFieldWithConfigurationHandler:^(UITextField *campo) {
+        campo.text = carpeta;
+        campo.autocapitalizationType = UITextAutocapitalizationTypeNone;
+        campo.autocorrectionType = UITextAutocorrectionTypeNo;
+        campo.clearButtonMode = UITextFieldViewModeWhileEditing;
+    }];
+    [a addAction:[UIAlertAction actionWithTitle:@"Cancelar" style:UIAlertActionStyleCancel handler:nil]];
+    [a addAction:[UIAlertAction actionWithTitle:@"Descargar" style:UIAlertActionStyleDefault
+        handler:^(UIAlertAction *accion) {
+        NSString *ruta = [a.textFields.firstObject.text stringByTrimmingCharactersInSet:
+                          [NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (ruta.length == 0) ruta = [ITDownloadManager carpetaDeDescargas];
+        [ITDownloadManager guardarCarpetaDeDescargas:ruta];
+        ITDescarga *descarga = [[ITDownloadManager compartida] descargarVideo:self->_video
+                                                                      calidad:calidad
+                                                                      carpeta:ruta];
+        [self avisar:(descarga ? @"Descarga añadida · Perfil → Descargas"
+                               : @"No se pudo añadir la descarga")];
+    }]];
+    [self presentViewController:a animated:YES completion:nil];
 }
 
 #pragma mark - Calidad y velocidad
@@ -920,7 +1284,7 @@
 - (void)cambiarAURL:(NSString *)url variante:(NSDictionary *)variante {
     if (url.length == 0) return;
     _varianteActual = variante;
-    [_btnCalidad setTitle:variante[@"nombre"] ?: @"Auto" forState:UIControlStateNormal];
+    [_btnCalidad usarTexto:variante[@"nombre"] ?: @"Auto"];
     double actual = CMTimeGetSeconds(_player.currentTime);
     BOOL estaba = _player.rate > 0;
     _reproducirAlCargar = estaba;
@@ -928,6 +1292,13 @@
     if (!_esDirecto && actual > 1) {
         [_player seekToTime:CMTimeMakeWithSeconds(actual, 600)];
     }
+}
+
+- (float)velocidadElegida {
+    id valor = [[NSUserDefaults standardUserDefaults] objectForKey:@"itwitch_velocidad"];
+    if (valor == nil) return 1.0f;
+    float v = [valor floatValue];
+    return (v >= 0.5f && v <= 2.0f) ? v : 1.0f;
 }
 
 - (void)elegirVelocidad {
@@ -938,12 +1309,19 @@
         NSString *titulo = [NSString stringWithFormat:@"%.2g×", n.doubleValue];
         [a addAction:[UIAlertAction actionWithTitle:titulo style:UIAlertActionStyleDefault
             handler:^(UIAlertAction *accion) {
-            [self->_player setRate:n.floatValue];
-            [self->_btnVelocidad setTitle:titulo forState:UIControlStateNormal];
+            [self aplicarVelocidad:n.floatValue];
         }]];
     }
     [a addAction:[UIAlertAction actionWithTitle:@"Cancelar" style:UIAlertActionStyleCancel handler:nil]];
     [self presentarAccion:a];
+}
+
+- (void)aplicarVelocidad:(float)velocidad {
+    [[NSUserDefaults standardUserDefaults] setFloat:velocidad forKey:@"itwitch_velocidad"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    if (_player.rate > 0) [_player setRate:velocidad];
+    [_btnVelocidad usarTexto:[NSString stringWithFormat:@"%.2g×", velocidad]];
+    [self avisar:[NSString stringWithFormat:@"Velocidad %.2g×", velocidad]];
 }
 
 - (void)presentarAccion:(UIAlertController *)a {
@@ -958,24 +1336,34 @@
 #pragma mark - Chat
 
 - (void)alternarChat {
+    if (_esClip || _rutaLocal.length) {
+        [self avisar:@"El chat no está disponible aquí"];
+        return;
+    }
     if (!_chatCargado) [self crearChat];
     _chatActivo = !_chatActivo;
+    [ITSettingsViewController guardarChatActivo:_chatActivo];
     _chat.view.hidden = !_chatActivo;
+    [_btnChat destacar:_chatActivo];
     [self.view setNeedsLayout];
+    [self avisar:_chatActivo ? @"Chat visible" : @"Chat oculto"];
 }
 
 - (void)crearChat {
     if (_chatCargado) return;
     if (_esDirecto) {
         _chat = [[ITChatViewController alloc] initWithCanal:_stream.login];
-    } else {
+    } else if (_video) {
         _chat = [[ITChatViewController alloc] initWithVideo:_video.identificador
                                                    duracion:_video.duracion];
+    } else {
+        return;
     }
     [self addChildViewController:_chat];
     [_chat didMoveToParentViewController:self];
     [self.view addSubview:_chat.view];
     _chatCargado = YES;
+    [self.view bringSubviewToFront:_chat.view];
     if (!_esDirecto) [_chat actualizarTiempo:CMTimeGetSeconds(_player.currentTime)];
 }
 
@@ -1004,6 +1392,18 @@
 
 - (void)tocarVideo {
     [self mostrarControles:!_controlesVisibles];
+}
+
+// Los toques sobre botones o sobre las propias barras no deben ocultar los
+// controles; solo el fondo del video los alterna.
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesto shouldReceiveTouch:(UITouch *)toque {
+    UIView *vista = toque.view;
+    while (vista && vista != _controles) {
+        if ([vista isKindOfClass:[UIControl class]]) return NO;
+        if (vista == _barraInferior || vista == _barraSuperior) return NO;
+        vista = vista.superview;
+    }
+    return YES;
 }
 
 - (void)dobleToque:(UITapGestureRecognizer *)g {
@@ -1119,6 +1519,7 @@
 #pragma mark - Auxiliares
 
 - (NSString *)titulo {
+    if (_tituloLocal.length) return _tituloLocal;
     if (_stream) {
         if (_stream.titulo.length) return [NSString stringWithFormat:@"%@ · %@", _stream.nombre, _stream.titulo];
         return _stream.nombre ?: _stream.login;
@@ -1132,6 +1533,10 @@
     if (!_cedidoAMini) [_player pause];
     [_timerOcultar invalidate];
     _timerOcultar = nil;
+    [_temporizadorSueno invalidate];
+    _temporizadorSueno = nil;
+    [_temporizadorAviso invalidate];
+    _temporizadorAviso = nil;
     if (_observadorTiempo) {
         [_player removeTimeObserver:_observadorTiempo];
         _observadorTiempo = nil;

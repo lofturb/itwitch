@@ -124,6 +124,16 @@ jobs:
           unzip -l "$IPA" | grep -q 'Payload/iTwitch.app/Info.plist' \
             || { echo "El IPA no contiene Info.plist"; exit 1; }
 
+      # Los permisos van dentro de la firma ldid. Se imprimen para poder
+      # comprobar en el log que la app puede escribir en /var/mobile/Media.
+      - name: Comprobar los entitlements
+        run: |
+          set -euo pipefail
+          BIN=$(find "$GITHUB_WORKSPACE/$APP_DIR/.theos" -type f -name 'iTwitch' | head -n 1)
+          LDID=$(find "$THEOS" -type f -name 'ldid' | head -n 1)
+          echo "ldid: $LDID"
+          "$LDID" -e "$BIN" || echo "(no se pudieron leer los entitlements)"
+
       - name: Publicar el IPA como artefacto descargable
         uses: actions/upload-artifact@v4
         with:

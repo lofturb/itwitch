@@ -15,4 +15,8 @@
 + (void)variantesDeMaster:(NSString *)url
                completion:(void (^)(NSArray *variantes, NSError *error))completion;
 
+// La misma lectura pero sobre un texto ya descargado (lo usa el gestor de
+// descargas para no pedir dos veces el master).
++ (NSArray *)variantesDeTexto:(NSString *)texto base:(NSURL *)base;
+
 @end

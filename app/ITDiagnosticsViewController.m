@@ -4,6 +4,7 @@
 #import "ITApi.h"
 #import "ITSession.h"
 #import "ITPlayback.h"
+#import "ITDownloadManager.h"
 
 @implementation ITDiagnosticsViewController {
     NSArray *_pasos;
@@ -22,7 +23,8 @@
             @"Sugerencias de búsqueda",
             @"Token de reproducción",
             @"Master HLS de un directo",
-            @"Sesión de usuario"
+            @"Sesión de usuario",
+            @"Carpeta de descargas"
         ];
         _estados = [NSMutableArray array];
         _detalles = [NSMutableArray array];
@@ -112,6 +114,12 @@
     } else {
         [self marcar:6 estado:@"—" detalle:@"Sin sesión (no es un fallo)"];
     }
+
+    NSString *carpeta = [ITDownloadManager carpetaDeDescargas];
+    BOOL escribible = [ITDownloadManager carpetaEscribible:carpeta];
+    [self marcar:7 estado:(escribible ? @"OK" : @"FALLO")
+        detalle:(escribible ? carpeta
+                            : [NSString stringWithFormat:@"Sin permiso en %@", carpeta])];
 }
 
 - (void)compartir {

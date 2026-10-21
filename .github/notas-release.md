@@ -40,6 +40,22 @@ por AirDrop, correo o Filza.
 - Audio en segundo plano y controles remotos.
 - Diagnóstico de conexión y ajustes de tema, calidad y chat.
 
+### Novedades de esta versión
+
+- **Reproductor rediseñado**: los controles ocupan toda la pantalla y cada
+  botón lleva su icono y su nombre (Calidad, Velocidad, Chat, Bajar, Pantalla),
+  así que ya no hay iconos invisibles ni funciones escondidas.
+- **Chat ocultable**: el botón **Chat** lo muestra u oculta y el vídeo ocupa
+  todo el espacio libre. En horizontal sigue al lado del vídeo.
+- **Descargas de VOD** a la carpeta que elijas, por defecto
+  `/var/mobile/Media/iTwitch` (visible desde Filza). Se elige la calidad, se
+  pueden cancelar, reintentar y borrar, y se guardan en MP4 (o `.ts` si el
+  sistema no puede convertirlos). Lista en **Perfil → Descargas**.
+- **Temporizador de apagado** (15, 30, 60 o 90 minutos).
+- **Copiar enlace en este minuto** para compartir un VOD desde el punto exacto.
+- **Velocidad recordada** entre vídeos y **calidad de solo audio**.
+- **Reproducción de las descargas** dentro de la propia app.
+
 ## Método de inicio de sesión
 
 La web de Twitch dentro de la app puede aceptar usuario y contraseña, pero
