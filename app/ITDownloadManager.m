@@ -659,7 +659,7 @@ static NSString * const kITCarpetaPredeterminada = @"/var/mobile/Media/iTwitch";
     if (!exportador) { completion(nil); return; }
 
     NSArray *tipos = exportador.supportedFileTypes;
-    AVFileType tipo = nil;
+    NSString *tipo = nil;
     NSString *destino = mp4;
     if ([tipos containsObject:AVFileTypeMPEG4]) {
         tipo = AVFileTypeMPEG4;
