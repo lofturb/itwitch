@@ -42,6 +42,11 @@ por AirDrop, correo o Filza.
 
 ### Novedades de esta versión
 
+- **Sin el cartel «Commercial break in progress»**: al entrar en un directo,
+  Twitch metía el anuncio previo del reproductor web; en el iPad ese anuncio no
+  se rellena y el cartel se quedaba encima del vídeo. Ahora se pide el directo
+  como el reproductor incrustado, que no inserta ese anuncio, con las mismas
+  calidades y sin tocar la reproducción.
 - **Reproductor rediseñado**: los controles ocupan toda la pantalla y cada
   botón lleva su icono y su nombre (Calidad, Velocidad, Chat, Bajar, Pantalla),
   así que ya no hay iconos invisibles ni funciones escondidas.

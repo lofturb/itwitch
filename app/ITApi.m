@@ -349,9 +349,13 @@ static ITChatMessage *ITMensajeReplay(NSDictionary *nodo) {
 #pragma mark - Reproduccion
 
 - (void)tokenDirecto:(NSString *)login completion:(ITTokenBloque)completion {
+    // playerType "embed" evita el anuncio previo que Twitch mete en el
+    // reproductor web ("site"): en el iPad ese anuncio no se rellena y deja
+    // el cartel "Commercial break in progress" encima del directo. El
+    // reproductor incrustado sirve el mismo directo y las mismas calidades.
     NSString *q = @"query($login:String!){ streamPlaybackAccessToken("
                   @" channelName:$login,"
-                  @" params:{ platform:\"web\", playerBackend:\"mediaplayer\", playerType:\"site\" }"
+                  @" params:{ platform:\"web\", playerBackend:\"mediaplayer\", playerType:\"embed\" }"
                   @"){ value signature } }";
     [self peticion:q variables:@{ @"login" : login ?: @"" } completion:^(NSDictionary *datos, NSError *error) {
         if (error) { if (completion) completion(nil, nil, error); return; }
