@@ -363,7 +363,7 @@
 }
 
 - (void)detener {
-    [_cliente desconectar];
+    [_cliente cerrar];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 

@@ -48,6 +48,22 @@ Por el tipo MIME. iOS solo ofrece instalar un perfil si llega como
 `servir.py` solo añade esas dos cabeceras y por lo demás es el servidor
 estándar de Python (sin dependencias).
 
+## Alternativa: copiar por USB (sin WiFi)
+
+Si la descarga desde Safari da problemas (el botón «Copiar a Filza» de iOS 9
+falla a veces), el fichero se puede dejar directamente en el iPad por el cable:
+
+```powershell
+python tools\afc_put.py dist\iTwitch-1.0.0-full.ipa /iTwitch.ipa
+python tools\afc_ls.py /
+```
+
+> Para AFC la raíz `/` **es** `/var/mobile/Media`, así que `/iTwitch.ipa` y
+> `/var/mobile/Media/iTwitch.ipa` son el mismo fichero (el script acepta las
+> dos formas).
+
+Luego, en el iPad: **Filza → /var/mobile/Media → iTwitch.ipa → Instalar**.
+
 ## Actualizar el `.ipa`
 
 Cuando salga una versión nueva, se copia encima:

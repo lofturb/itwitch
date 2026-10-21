@@ -36,6 +36,7 @@
     AVPlayerLayer *_capa;
     id _observadorTiempo;
     id _observadorEstado;
+    NSTimer *_temporizadorCarga;
     NSTimeInterval _ultimoToque;
 
     UIView *_controles;
@@ -249,6 +250,7 @@
 
 - (void)dealloc {
     [self parar];
+    [_temporizadorCarga invalidate];
     if (_observadorTiempo) [_player removeTimeObserver:_observadorTiempo];
     if (_observadorEstado) [_item removeObserver:self forKeyPath:@"status"];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
@@ -259,6 +261,7 @@
 
 - (void)cargar {
     [self mostrarCargando:YES];
+    [self programarLimiteDeCarga];
     _lblError.hidden = YES;
     _btnReintentar.hidden = YES;
 
@@ -268,24 +271,49 @@
         return;
     }
     if (_esDirecto) {
+        NSLog(@"[iTwitch] abriendo directo %@", _stream.login);
         [ITPlayback urlDirecto:_stream.login completion:^(NSString *url, NSError *error) {
             if (error || url.length == 0) {
+                NSLog(@"[iTwitch] token de directo fallo: %@", error);
                 [debil mostrarError:error.localizedDescription ?: @"No se pudo abrir el directo."];
                 return;
             }
+            NSLog(@"[iTwitch] master: %@", url);
             debil->_urlMaster = url;
             [debil cargarVariantesYReproducir:url];
         }];
     } else {
+        NSLog(@"[iTwitch] abriendo video %@", _video.identificador);
         [ITPlayback urlVod:_video.identificador completion:^(NSString *url, NSError *error) {
             if (error || url.length == 0) {
+                NSLog(@"[iTwitch] token de video fallo: %@", error);
                 [debil mostrarError:error.localizedDescription ?: @"No se pudo abrir el vídeo."];
                 return;
             }
+            NSLog(@"[iTwitch] master vod: %@", url);
             debil->_urlMaster = url;
             [debil cargarVariantesYReproducir:url];
         }];
     }
+}
+
+// En un A5 una carga que no termina deja la rueda girando para siempre.
+// Este límite convierte el cuelgue en un error con botón de reintentar.
+- (void)programarLimiteDeCarga {
+    [_temporizadorCarga invalidate];
+    _temporizadorCarga = [NSTimer scheduledTimerWithTimeInterval:25.0
+                                                          target:self
+                                                        selector:@selector(cargaAgotada:)
+                                                        userInfo:nil
+                                                         repeats:NO];
+}
+
+- (void)cargaAgotada:(NSTimer *)temporizador {
+    _temporizadorCarga = nil;
+    if (_item.status == AVPlayerItemStatusReadyToPlay) return;
+    NSLog(@"[iTwitch] la carga se agoto (estado %ld, error %@)",
+          (long)_item.status, _item.error);
+    [self mostrarError:@"El vídeo tarda demasiado en cargar. Revisa la conexión y el perfil de certificados."];
 }
 
 - (void)cargarClip {
@@ -325,6 +353,12 @@
 - (void)cargarVariantesYReproducir:(NSString *)url {
     __typeof(self) debil = self;
     [ITPlayback variantesDeMaster:url completion:^(NSArray *variantes, NSError *error) {
+        if (error && variantes.count == 0) {
+            NSLog(@"[iTwitch] no se pudo leer el master: %@", error);
+            [debil mostrarError:error.localizedDescription ?: @"No se pudo leer la lista de calidades."];
+            return;
+        }
+        NSLog(@"[iTwitch] variantes: %lu", (unsigned long)variantes.count);
         debil->_variantes = variantes ?: @[];
         NSDictionary *elegida = [debil mejorCalidadDe:debil->_variantes];
         NSString *destino = url;
@@ -362,6 +396,9 @@
         [self mostrarError:@"La URL del vídeo no es válida."];
         return;
     }
+    NSLog(@"[iTwitch] preparando: %@", urlString);
+    [self mostrarCargando:YES];
+    [self programarLimiteDeCarga];
     if (_item && _observadorEstado) {
         [_item removeObserver:self forKeyPath:@"status"];
         _observadorEstado = nil;
@@ -403,6 +440,8 @@
         [_rueda startAnimating];
     } else {
         [_rueda stopAnimating];
+        [_temporizadorCarga invalidate];
+        _temporizadorCarga = nil;
     }
 }
 
@@ -445,6 +484,7 @@
     if (![keyPath isEqualToString:@"status"]) return;
     if (object != _item) return;
     if (_item.status == AVPlayerItemStatusReadyToPlay) {
+        NSLog(@"[iTwitch] listo para reproducir");
         [self mostrarCargando:NO];
         _lblError.hidden = YES;
         _btnReintentar.hidden = YES;
@@ -460,6 +500,7 @@
         else [self actualizarBotonPlay];
         [self actualizarAhoraSuena];
     } else if (_item.status == AVPlayerItemStatusFailed) {
+        NSLog(@"[iTwitch] fallo del item: %@", _item.error);
         [self mostrarError:_item.error.localizedDescription ?: @"No se pudo reproducir."];
     }
 }

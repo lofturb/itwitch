@@ -4,6 +4,10 @@
 #import <CFNetwork/CFNetwork.h>
 #import <math.h>
 
+// El chat vive en su propio hilo con su propio run loop. Si los flujos se
+// programan en el run loop principal (como se hacía antes), cualquier espera
+// del socket (handshake TLS, buffer lleno) congela la interfaz: en iOS el
+// watchdog acaba matando la app con 0x8badf00d.
 @interface ITChatClient () <NSStreamDelegate>
 - (void)procesarDatos;
 - (void)procesarBuffer;
@@ -20,6 +24,10 @@
     BOOL _conectado;
     NSUInteger _intentos;
     NSTimer *_reconexion;
+    NSThread *_hilo;
+    NSRunLoop *_runLoopHilo;
+    BOOL _hiloListo;
+    BOOL _terminar;
 }
 
 - (instancetype)init {
@@ -32,22 +40,99 @@
 }
 
 - (void)dealloc {
-    [self desconectar];
+    // Mientras el hilo vive conserva self, así que aquí ya no queda nadie
+    // usando los flujos; se cierran por si acaso.
+    [_reconexion invalidate];
+    [_entrada close];
+    [_salida close];
 }
 
 - (BOOL)conectado { return _conectado; }
 
-#pragma mark - Conexion
+#pragma mark - Hilo propio
+
+- (void)asegurarHilo {
+    if (_hilo && !_hilo.finished) return;
+    _terminar = NO;
+    _hiloListo = NO;
+    _hilo = [[NSThread alloc] initWithTarget:self selector:@selector(bucleDelHilo) object:nil];
+    _hilo.name = @"itwitch-chat";
+    [_hilo start];
+
+    // Se espera a que el run loop exista antes de encolar trabajo. Son
+    // milisegundos y solo ocurre al abrir el chat.
+    NSDate *limite = [NSDate dateWithTimeIntervalSinceNow:1.0];
+    while (!_hiloListo && [limite timeIntervalSinceNow] > 0.0) {
+        [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode
+                                 beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.01]];
+    }
+}
+
+- (void)bucleDelHilo {
+    @autoreleasepool {
+        _runLoopHilo = [NSRunLoop currentRunLoop];
+        [_runLoopHilo addPort:[NSMachPort port] forMode:NSDefaultRunLoopMode];
+        _hiloListo = YES;
+
+        while (!_terminar) {
+            @autoreleasepool {
+                [_runLoopHilo runMode:NSDefaultRunLoopMode
+                           beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.5]];
+            }
+        }
+
+        [self cerrarEnHilo];
+        _runLoopHilo = nil;
+        _hiloListo = NO;
+    }
+}
+
+- (void)ejecutar:(SEL)selector objeto:(id)objeto {
+    if (!_hilo) return;
+    if ([NSThread currentThread] == _hilo) {
+        [self performSelector:selector withObject:objeto];
+    } else {
+        [self performSelector:selector onThread:_hilo withObject:objeto waitUntilDone:NO];
+    }
+}
+
+#pragma mark - API publica
 
 - (void)conectarCanal:(NSString *)canal {
     if (canal.length == 0) return;
-    [self desconectar];
-    _canal = [canal lowercaseString];
-    _intentos = 0;
-    [self abrir];
+    [self asegurarHilo];
+    [self ejecutar:@selector(conectarEnHilo:) objeto:[canal lowercaseString]];
 }
 
-- (void)abrir {
+- (void)desconectar {
+    [self ejecutar:@selector(cerrarEnHilo) objeto:nil];
+}
+
+- (void)cerrar {
+    [self ejecutar:@selector(pararEnHilo) objeto:nil];
+}
+
+- (void)enviarMensaje:(NSString *)texto {
+    if (texto.length == 0) return;
+    [self ejecutar:@selector(enviarMensajeEnHilo:) objeto:[texto copy]];
+}
+
+#pragma mark - Conexion (siempre en el hilo del chat)
+
+- (void)conectarEnHilo:(NSString *)canal {
+    _canal = [canal copy];
+    _intentos = 0;
+    [self cerrarEnHilo];
+    [self abrirEnHilo];
+}
+
+- (void)pararEnHilo {
+    [self cerrarEnHilo];
+    _terminar = YES;
+    CFRunLoopStop(CFRunLoopGetCurrent());
+}
+
+- (void)abrirEnHilo {
     [_reconexion invalidate];
     _reconexion = nil;
     _buffer = [NSMutableString string];
@@ -87,25 +172,27 @@
     _entrada.delegate = self;
     _salida.delegate = self;
 
-    [_entrada scheduleInRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-    [_salida scheduleInRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+    NSRunLoop *runLoop = _runLoopHilo ?: [NSRunLoop currentRunLoop];
+    [_entrada scheduleInRunLoop:runLoop forMode:NSDefaultRunLoopMode];
+    [_salida scheduleInRunLoop:runLoop forMode:NSDefaultRunLoopMode];
     [_entrada open];
     [_salida open];
 }
 
-- (void)desconectar {
+- (void)cerrarEnHilo {
     [_reconexion invalidate];
     _reconexion = nil;
+    NSRunLoop *runLoop = _runLoopHilo ?: [NSRunLoop currentRunLoop];
     if (_entrada) {
         _entrada.delegate = nil;
         [_entrada close];
-        [_entrada removeFromRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+        [_entrada removeFromRunLoop:runLoop forMode:NSDefaultRunLoopMode];
         _entrada = nil;
     }
     if (_salida) {
         _salida.delegate = nil;
         [_salida close];
-        [_salida removeFromRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+        [_salida removeFromRunLoop:runLoop forMode:NSDefaultRunLoopMode];
         _salida = nil;
     }
     _abierto = NO;
@@ -166,11 +253,11 @@
             [self.delegado chatAviso:@"Chat desconectado. Reconectando…"];
         });
     }
-    [self desconectar];
+    [self cerrarEnHilo];
     _intentos++;
     NSTimeInterval espera = MIN(30.0, pow(2.0, (double)MIN(_intentos, 5)));
     _reconexion = [NSTimer scheduledTimerWithTimeInterval:espera target:self
-                                                 selector:@selector(abrir)
+                                                 selector:@selector(abrirEnHilo)
                                                  userInfo:nil repeats:NO];
 }
 
@@ -192,7 +279,7 @@
     [_salida write:datos.bytes maxLength:datos.length];
 }
 
-- (void)enviarMensaje:(NSString *)texto {
+- (void)enviarMensajeEnHilo:(NSString *)texto {
     if (texto.length == 0 || !_conectado) return;
     if (![[ITSession compartida] haySesion]) return;
     [self enviarLinea:[NSString stringWithFormat:@"PRIVMSG #%@ :%@", _canal, texto]];

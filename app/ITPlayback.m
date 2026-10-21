@@ -77,6 +77,17 @@ static NSString *ITCodificar(NSString *texto) {
 
     [[[NSURLSession sharedSession] dataTaskWithRequest:peticion
         completionHandler:^(NSData *datos, NSURLResponse *respuesta, NSError *error) {
+        NSInteger codigo = 0;
+        if ([respuesta isKindOfClass:[NSHTTPURLResponse class]]) {
+            codigo = [(NSHTTPURLResponse *)respuesta statusCode];
+        }
+        NSLog(@"[iTwitch] master HTTP %ld (%lu bytes)", (long)codigo,
+              (unsigned long)datos.length);
+        if (!error && codigo >= 400) {
+            error = [NSError errorWithDomain:@"iTwitch" code:codigo
+                userInfo:@{ NSLocalizedDescriptionKey :
+                    [NSString stringWithFormat:@"Twitch respondió %ld al pedir el vídeo.", (long)codigo] }];
+        }
         if (error || !datos) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (completion) completion(nil, error);

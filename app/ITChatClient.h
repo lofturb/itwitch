@@ -14,5 +14,6 @@
 @property (nonatomic, readonly) BOOL conectado;
 - (void)conectarCanal:(NSString *)canal;
 - (void)desconectar;
+- (void)cerrar;
 - (void)enviarMensaje:(NSString *)texto;
 @end
